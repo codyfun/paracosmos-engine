@@ -1,5 +1,6 @@
 [project]
 title = Paracosmos
+dependencies#0 = https://github.com/AGulev/drawpixels/archive/master.zip
 
 [bootstrap]
 main_collection = /main/main.collectionc
@@ -9,8 +10,8 @@ game_binding = /input/game.input_bindingc
 use_accelerometer = 0
 
 [display]
-width = 1280
-height = 720
+width = 1152
+height = 648
 
 [script]
 shared_state = 1
@@ -27,4 +28,14 @@ input_method = HiddenInputField
 [physics]
 gravity_y = -1000.0
 scale = 0.01
+
+[html5]
+show_made_with_defold = 0
+
+[sprite]
+subpixels = 0
+
+[graphics]
+default_texture_min_filter = nearest
+default_texture_mag_filter = nearest
 
