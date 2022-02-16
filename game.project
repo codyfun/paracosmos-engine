@@ -1,6 +1,6 @@
 [project]
 title = Paracosmos
-dependencies#0 = https://github.com/AGulev/drawpixels/archive/master.zip
+dependencies = 
 
 [bootstrap]
 main_collection = /main/main.collectionc

@@ -1,12 +1,13 @@
-name: "main"
+name: "player"
 scale_along_z: 0
 embedded_instances {
-  id: "level"
-  children: "attackrange"
-  children: "moverange"
+  id: "go"
+  children: "art"
+  children: "bg"
+  children: "hpbar"
   data: "components {\n"
-  "  id: \"main\"\n"
-  "  component: \"/main/main.script\"\n"
+  "  id: \"player\"\n"
+  "  component: \"/main/player.script\"\n"
   "  position {\n"
   "    x: 0.0\n"
   "    y: 0.0\n"
@@ -20,17 +21,83 @@ embedded_instances {
   "  }\n"
   "}\n"
   "embedded_components {\n"
-  "  id: \"bg\"\n"
+  "  id: \"collisionobject\"\n"
+  "  type: \"collisionobject\"\n"
+  "  data: \"collision_shape: \\\"\\\"\\n"
+  "type: COLLISION_OBJECT_TYPE_KINEMATIC\\n"
+  "mass: 0.0\\n"
+  "friction: 0.1\\n"
+  "restitution: 0.5\\n"
+  "group: \\\"player\\\"\\n"
+  "mask: \\\"player\\\"\\n"
+  "embedded_collision_shape {\\n"
+  "  shapes {\\n"
+  "    shape_type: TYPE_SPHERE\\n"
+  "    position {\\n"
+  "      x: 0.0\\n"
+  "      y: 0.0\\n"
+  "      z: 0.0\\n"
+  "    }\\n"
+  "    rotation {\\n"
+  "      x: 0.0\\n"
+  "      y: 0.0\\n"
+  "      z: 0.0\\n"
+  "      w: 1.0\\n"
+  "    }\\n"
+  "    index: 0\\n"
+  "    count: 1\\n"
+  "  }\\n"
+  "  data: 32.0\\n"
+  "}\\n"
+  "linear_damping: 0.0\\n"
+  "angular_damping: 0.0\\n"
+  "locked_rotation: false\\n"
+  "bullet: false\\n"
+  "\"\n"
+  "  position {\n"
+  "    x: 0.0\n"
+  "    y: 0.0\n"
+  "    z: 0.0\n"
+  "  }\n"
+  "  rotation {\n"
+  "    x: 0.0\n"
+  "    y: 0.0\n"
+  "    z: 0.0\n"
+  "    w: 1.0\n"
+  "  }\n"
+  "}\n"
+  ""
+  position {
+    x: 0.0
+    y: 0.0
+    z: 0.0
+  }
+  rotation {
+    x: 0.0
+    y: 0.0
+    z: 0.0
+    w: 1.0
+  }
+  scale3 {
+    x: 1.0
+    y: 1.0
+    z: 1.0
+  }
+}
+embedded_instances {
+  id: "art"
+  data: "embedded_components {\n"
+  "  id: \"sprite\"\n"
   "  type: \"sprite\"\n"
-  "  data: \"tile_set: \\\"/main/main.atlas\\\"\\n"
-  "default_animation: \\\"fullbgwhite\\\"\\n"
+  "  data: \"tile_set: \\\"/main/player.atlas\\\"\\n"
+  "default_animation: \\\"human\\\"\\n"
   "material: \\\"/builtins/materials/sprite.material\\\"\\n"
   "blend_mode: BLEND_MODE_ALPHA\\n"
   "\"\n"
   "  position {\n"
-  "    x: 576.0\n"
-  "    y: 324.0\n"
-  "    z: -1.0\n"
+  "    x: 0.0\n"
+  "    y: 32.0\n"
+  "    z: 0.0\n"
   "  }\n"
   "  rotation {\n"
   "    x: 0.0\n"
@@ -42,7 +109,7 @@ embedded_instances {
   ""
   position {
     x: 0.0
-    y: 0.0
+    y: -32.0
     z: 0.0
   }
   rotation {
@@ -58,45 +125,7 @@ embedded_instances {
   }
 }
 embedded_instances {
-  id: "players"
-  data: "embedded_components {\n"
-  "  id: \"collectionfactory\"\n"
-  "  type: \"collectionfactory\"\n"
-  "  data: \"prototype: \\\"/main/player.collection\\\"\\n"
-  "load_dynamically: false\\n"
-  "\"\n"
-  "  position {\n"
-  "    x: 0.0\n"
-  "    y: 0.0\n"
-  "    z: 0.0\n"
-  "  }\n"
-  "  rotation {\n"
-  "    x: 0.0\n"
-  "    y: 0.0\n"
-  "    z: 0.0\n"
-  "    w: 1.0\n"
-  "  }\n"
-  "}\n"
-  ""
-  position {
-    x: 0.0
-    y: 0.0
-    z: 0.0
-  }
-  rotation {
-    x: 0.0
-    y: 0.0
-    z: 0.0
-    w: 1.0
-  }
-  scale3 {
-    x: 1.0
-    y: 1.0
-    z: 1.0
-  }
-}
-embedded_instances {
-  id: "moverange"
+  id: "bg"
   data: "embedded_components {\n"
   "  id: \"sprite\"\n"
   "  type: \"sprite\"\n"
@@ -108,7 +137,7 @@ embedded_instances {
   "  position {\n"
   "    x: 0.0\n"
   "    y: 0.0\n"
-  "    z: -0.99\n"
+  "    z: 0.0\n"
   "  }\n"
   "  rotation {\n"
   "    x: 0.0\n"
@@ -121,7 +150,7 @@ embedded_instances {
   position {
     x: 0.0
     y: 0.0
-    z: 0.0
+    z: -0.01
   }
   rotation {
     x: 0.0
@@ -130,25 +159,25 @@ embedded_instances {
     w: 1.0
   }
   scale3 {
-    x: 1.0E-6
-    y: 1.0E-6
+    x: 0.16
+    y: 0.16
     z: 1.0
   }
 }
 embedded_instances {
-  id: "attackrange"
+  id: "hpbar"
   data: "embedded_components {\n"
   "  id: \"sprite\"\n"
   "  type: \"sprite\"\n"
   "  data: \"tile_set: \\\"/main/main.atlas\\\"\\n"
-  "default_animation: \\\"circle\\\"\\n"
+  "default_animation: \\\"square\\\"\\n"
   "material: \\\"/main/smooth.material\\\"\\n"
   "blend_mode: BLEND_MODE_ALPHA\\n"
   "\"\n"
   "  position {\n"
-  "    x: 0.0\n"
+  "    x: 200.0\n"
   "    y: 0.0\n"
-  "    z: -0.99\n"
+  "    z: 0.0\n"
   "  }\n"
   "  rotation {\n"
   "    x: 0.0\n"
@@ -159,9 +188,9 @@ embedded_instances {
   "}\n"
   ""
   position {
-    x: 0.0
-    y: 0.0
-    z: 0.0
+    x: -30.0
+    y: 40.0
+    z: 0.01
   }
   rotation {
     x: 0.0
@@ -170,8 +199,8 @@ embedded_instances {
     w: 1.0
   }
   scale3 {
-    x: 1.0E-6
-    y: 1.0E-6
+    x: 0.15
+    y: 0.02
     z: 1.0
   }
 }
