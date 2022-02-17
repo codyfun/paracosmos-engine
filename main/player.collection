@@ -30,6 +30,8 @@ embedded_instances {
   "restitution: 0.5\\n"
   "group: \\\"player\\\"\\n"
   "mask: \\\"player\\\"\\n"
+  "mask: \\\"cursor\\\"\\n"
+  "mask: \\\"obstacle\\\"\\n"
   "embedded_collision_shape {\\n"
   "  shapes {\\n"
   "    shape_type: TYPE_SPHERE\\n"

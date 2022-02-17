@@ -30,6 +30,54 @@ key_trigger {
   input: KEY_D
   action: "right"
 }
+key_trigger {
+  input: KEY_1
+  action: "1"
+}
+key_trigger {
+  input: KEY_2
+  action: "2"
+}
+key_trigger {
+  input: KEY_3
+  action: "3"
+}
+key_trigger {
+  input: KEY_4
+  action: "4"
+}
+key_trigger {
+  input: KEY_5
+  action: "5"
+}
+key_trigger {
+  input: KEY_6
+  action: "6"
+}
+key_trigger {
+  input: KEY_7
+  action: "7"
+}
+key_trigger {
+  input: KEY_8
+  action: "8"
+}
+key_trigger {
+  input: KEY_9
+  action: "9"
+}
+key_trigger {
+  input: KEY_0
+  action: "0"
+}
+key_trigger {
+  input: KEY_ESC
+  action: "escape"
+}
+key_trigger {
+  input: KEY_BACKSPACE
+  action: "key-backspace"
+}
 mouse_trigger {
   input: MOUSE_BUTTON_LEFT
   action: "click"
@@ -37,4 +85,28 @@ mouse_trigger {
 mouse_trigger {
   input: MOUSE_BUTTON_RIGHT
   action: "rightclick"
+}
+mouse_trigger {
+  input: MOUSE_BUTTON_LEFT
+  action: "touch"
+}
+mouse_trigger {
+  input: MOUSE_WHEEL_UP
+  action: "scroll_up"
+}
+mouse_trigger {
+  input: MOUSE_WHEEL_DOWN
+  action: "scroll_down"
+}
+mouse_trigger {
+  input: MOUSE_BUTTON_MIDDLE
+  action: "middleclick"
+}
+text_trigger {
+  input: TEXT
+  action: "text"
+}
+text_trigger {
+  input: MARKED_TEXT
+  action: "marked_text"
 }
