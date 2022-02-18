@@ -1,36 +1,123 @@
+local gamelogic = require"main/gamelogic"
+
 local rangespritesize
 
 function init(self)
-	go.set("#bg", "tint", vmath.vector4(.9,1,.8,1)) --green grass
+	msg.post(".", "acquire_input_focus")
 	
+	self.selectable_targets = {}
+
+	self.HighlightPlayer = function (self, player, alt)
+		if alt then --alt highlight: yellow and no selection fx
+			msg.post(player, "highlight_target", {color = vmath.vector4(1,.8,0,1), weight=0.5})
+		else
+			msg.post(player, "highlight_target")
+			self.selection_target = player
+			go.set("selection", "position", go.get(player.path, "position"))
+			local color = (go.get(player, "team") == 0) and vmath.vector4(0,0,.8,1) or vmath.vector4(.5,0,0,1)
+			go.set("selection#sprite", "tint", color)
+		end
+	end
+
+	self.UnhighlightPlayer = function (self, player, alt)
+		if self.selection_target and (self.selection_target == player or self.selection_target.path == player) then
+			self.selection_target = nil --oops... i have not been consistent with choosing paths vs script components
+			go.set("selection#sprite", "tint", vmath.vector4(0,0,0,0))
+		end
+		if alt then --deselect to alt highlight state
+			self:HighlightPlayer(player, true)
+		else
+			msg.post(player, "clear_highlight")
+		end
+	end
+	
+	go.set("#bg", "tint", vmath.vector4(.9,1,.8,1)) --green grass
+
+	rangespritesize = go.get("moverange#sprite", "size.x")
+	go.set("moverange#sprite", "tint", vmath.vector4(0.8,0.6,1,0.2)) --move range bubble is purple
+	go.set("attackrange#sprite", "tint", vmath.vector4(1,0.8,0.2,0.25)) --attack range bubble is yellow
+
+	--TEMP
 	local mainplayer = collectionfactory.create("/players#collectionfactory", vmath.vector3(1152/2,648/2,0), nil, {[hash"/go"] = {controllable = true}})
 	local foe = collectionfactory.create("/players#collectionfactory", vmath.vector3(1152/2+150,648/2,0), nil, {[hash"/go"] = {team=1, race = hash"dog"}})
 	msg.post(mainplayer[hash"/go"], hash"start_turn")
-
-	rangespritesize = go.get("moverange#sprite", "size.x")
-	go.set("moverange#sprite", "tint", vmath.vector4(0,0,1,0.2)) --move range bubble is blue
-	go.set("attackrange#sprite", "tint", vmath.vector4(1,0,0,0.2)) --attack range bubble is red
+	--TEMP
 end
 
 function update(self, dt)
 	if self.selection_target then
 		go.set("selection", "position", go.get(self.selection_target.path, "position"))
 	end
+	if self.show_attackrange then
+		go.set("attackrange", "position", go.get(self.active_player.path, "position"))
+	end
+end
+
+function on_input(self, action_id, action)
+	--[[if action_id == hash"touch" and action.pressed then
+		print(go.get("/cursor", "position"))
+	end]]
 end
 
 function on_message(self, message_id, message, sender)
 	if message_id == hash"turn_info" then
-		local p = message.pos
-		go.set("moverange", "position", p)
-		go.set("moverange", "scale", vmath.vector3()) --move range bubble expands to given radius plus 64 for sprite boundaries (as multiple of circle.png size)
+		self.active_player = sender
+		go.set("moverange", "position", message.pos)
+		go.set("moverange", "scale", vmath.vector3()) --given radius plus 64 for sprite boundaries (as multiple of circle.png size)
 		go.animate("moverange", "scale", go.PLAYBACK_ONCE_FORWARD, vmath.vector3((message.moverange+32)*2/rangespritesize), go.EASING_LINEAR, 1/3)
-	elseif message_id == hash"highlight_target" then
-		self.selection_target = message.player
-		go.set("selection", "position", go.get(message.player.path, "position"))
-		local color = (go.get(message.player, "team") == 0) and vmath.vector4(0,0,.8,1) or vmath.vector4(.5,0,0,1)
-		go.set("selection#sprite", "tint", color)
-	elseif message_id == hash"clear_highlight" then
-		self.selection_target = niil
-		go.set("selection#sprite", "tint", vmath.vector4(0,0,0,0))
+	elseif message_id == hash"player_hover" then
+		self.player_hover = sender
+		if self.selectable_targets[sender.path] and gamelogic.target_funcs[self.active_skill.target](self.active_player,sender) then
+			self:HighlightPlayer(sender)
+		end
+	elseif message_id == hash"player_unhover" then
+		if self.selectable_targets[self.player_hover.path] and gamelogic.target_funcs[self.active_skill.target](self.active_player,sender) then
+			self:UnhighlightPlayer(sender, true)
+		end
+		self.player_hover = nil
+	elseif message_id == hash"set_active_skill" then
+		if self.active_skill then --clear all highlights for previously selected skill
+			for k,v in pairs(self.selectable_targets) do
+				self:UnhighlightPlayer(k)
+			end
+			self:UnhighlightPlayer(self.active_player)
+		end
+		self.active_skill = message.skill
+		if self.active_skill and self.active_skill.target ~= gamelogic.TARGET_SELF then
+			self.show_attackrange = true
+			go.set("attackrange", "position", go.get(self.active_player.path, "position"))
+			local range = self.active_skill.range or 0
+			go.set("attackrange", "scale", vmath.vector3((range+32)*2/rangespritesize)) --radius + 64 as with moverange
+			go.set("attackrange#sprite", "scale", vmath.vector3()) --bubble visually expands but code treats as always full
+			go.animate("attackrange#sprite", "scale", go.PLAYBACK_ONCE_FORWARD, vmath.vector3(1), go.EASING_LINEAR, 1/3)
+			for target,b in pairs(self.selectable_targets) do
+				if gamelogic.target_funcs[self.active_skill.target](self.active_player,target) then
+					self:HighlightPlayer(target, not(self.player_hover and self.player_hover == target)) --full select already hovered target
+				end
+			end
+		else --deselecting skill
+			self.show_attackrange = false --don't forget me! otherwise 0 scale causes some wonky selectability bugs
+			go.cancel_animations("attackrange", "scale")
+			go.set("attackrange", "position", vmath.vector3())
+			go.set("attackrange", "scale", vmath.vector3())
+		end
+		if self.active_skill and self.active_skill.target == gamelogic.TARGET_SELF then
+			self:HighlightPlayer(self.active_player)
+		end
+	elseif message_id == hash"trigger_response" then
+		local other = gamelogic.cast_url(message.other_id)
+		if sender.path == hash"/attackrange" then
+			if message.enter then
+				self.selectable_targets[message.other_id] = true
+				if gamelogic.target_funcs[self.active_skill.target](self.active_player,message.other_id) then
+					self:HighlightPlayer(other, not(self.player_hover and self.player_hover == other)) --full select already hovered target
+				end
+			else
+				self.selectable_targets[message.other_id] = nil
+				if self.active_skill and self.active_skill.target ~= gamelogic.TARGET_SELF then
+					self:UnhighlightPlayer(other) --do not auto-unhighlight when clearing range by selecting auto-targeting attacks
+				end
+			end
+		end
 	end
 end

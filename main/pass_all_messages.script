@@ -1,0 +1,5 @@
+go.property("send_to", hash("/level"))
+
+function on_message(self, message_id, message, sender)
+	msg.post(self.send_to, message_id, message)
+end

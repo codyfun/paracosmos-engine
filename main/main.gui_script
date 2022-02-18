@@ -15,7 +15,7 @@ function init(self)
 			text = new_node[hash"skilltemplate/text"],
 			skill = skill,
 		}
-		self.skill_list[new_id] = new_entry
+		self.skill_list[hash(new_id)] = new_entry
 		self.skill_list_size = self.skill_list_size + 1
 		gui.set_position(new_entry.button, vmath.vector3((self.skill_list_size%2==0) and 50 or -50,272-250,0))
 		gui.set_text(new_entry.text, skill.name)
@@ -39,15 +39,20 @@ function init(self)
 			else --click on selected skill to deslect
 				gui.set_color(self.skill_selected, vmath.vector4(1,1,.8,1))
 				self.skill_selected = nil
+				msg.post("/level", "set_active_skill", {skill = nil})
 				return --do not fallthrough to selection
 			end
 		end
 		self.skill_selected = button.node
 		gui.set_color(self.skill_selected, vmath.vector4(1,1,.6,1))
+		msg.post("/level", "set_active_skill", {skill = self.skill_list[gui.get_id(button.node)].skill})
 	end
-
-	self:AddSkillbutton({name = "Attack", desc = "Damage one enemy.", target = 1,})
-	self:AddSkillbutton({name = "Defend", desc = "Raise your defense.", target = 0,})
+	
+	--TEMP
+	local gamelogic = require"main/gamelogic"
+	self:AddSkillbutton({name = "Attack", desc = "Damage one enemy.", target = gamelogic.TARGET_FOE, range = 64,})
+	self:AddSkillbutton({name = "Defend", desc = "Raise your defense.", target = gamelogic.TARGET_SELF,})
+	--TEMP
 end
 
 function on_input(self, action_id, action)
@@ -57,16 +62,6 @@ function on_input(self, action_id, action)
 end
 
 function on_message(self, message_id, message, sender)
-	if message_id == hash"player_hover" then
-		if true then --todo: condition
-			msg.post(sender, "highlight_target")
-			msg.post("/level", "highlight_target", {player = sender})
-		end
-	elseif message_id == hash"player_unhover" then
-		if true then --todo: condition
-			msg.post(sender, "clear_highlight")
-			msg.post("/level", "clear_highlight")
-		end
-	end
+	
 end
 

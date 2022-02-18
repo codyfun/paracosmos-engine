@@ -46,15 +46,17 @@ function on_message(self, message_id, message, sender)
 		self.anchor = go.get(".", "position")
 		self.has_turn = true
 		msg.post(sender, "turn_info", {pos = go.get(".", "position"), moverange=self.move_range})
-	elseif self.has_turn and message_id == hash"contact_point_response" and message.other_group ~= hash"cursor" then
+	elseif self.has_turn and message_id == hash"contact_point_response" and message.other_group == hash"player" or message.other_group == hash"obstacle" then
 		go.set_position(go.get_position() + message.normal * message.distance) --move away from collisions
 	elseif message_id == hash"cursor_over" then
-		msg.post("/gui", "player_hover")
-	elseif message_id == hash"highlight_target" then
-		local color = (self.team == 0) and vmath.vector4(0,0,1,1) or vmath.vector4(1,0,0,1)
-		go.animate("art#sprite", "tint", go.PLAYBACK_LOOP_PINGPONG, (RACE_COLORS[self.race] + color)/2, go.EASING_INOUTQUAD, 1)
+		msg.post("/level", "player_hover")
 	elseif message_id == hash"cursor_out" then
-		msg.post("/gui", "player_unhover")
+		msg.post("/level", "player_unhover")
+	elseif message_id == hash"highlight_target" then
+		local color = message.color or ((self.team == 0) and vmath.vector4(.2,.2,1,1) or vmath.vector4(1,0,0,1))
+		local weight = message.weight or 2/3
+		go.set("art#sprite", "tint", RACE_COLORS[self.race])
+		go.animate("art#sprite", "tint", go.PLAYBACK_LOOP_PINGPONG, (RACE_COLORS[self.race] + weight*color)/(1+weight), go.EASING_INOUTQUAD, 1)
 	elseif message_id == hash"clear_highlight" then
 		go.cancel_animations("art#sprite", "tint")
 		go.set("art#sprite", "tint", RACE_COLORS[self.race])

@@ -80,15 +80,11 @@ key_trigger {
 }
 mouse_trigger {
   input: MOUSE_BUTTON_LEFT
-  action: "click"
+  action: "touch"
 }
 mouse_trigger {
   input: MOUSE_BUTTON_RIGHT
   action: "rightclick"
-}
-mouse_trigger {
-  input: MOUSE_BUTTON_LEFT
-  action: "touch"
 }
 mouse_trigger {
   input: MOUSE_WHEEL_UP
