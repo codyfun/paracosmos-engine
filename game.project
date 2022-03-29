@@ -2,6 +2,7 @@
 title = Paracosmos
 dependencies#0 = https://github.com/britzl/defold-input/archive/master.zip
 dependencies#1 = https://github.com/britzl/gooey/archive/master.zip
+dependencies#2 = https://github.com/AGulev/drawpixels/archive/master.zip
 
 [bootstrap]
 main_collection = /main/main.collectionc
@@ -37,8 +38,4 @@ splash_image = /assets/images/fullbgwhite.png
 
 [sprite]
 subpixels = 0
-
-[graphics]
-default_texture_min_filter = nearest
-default_texture_mag_filter = nearest
 
