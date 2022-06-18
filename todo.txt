@@ -1,7 +1,0 @@
-* implement skill execution
-* energy types, display on character and on skill buttons
-* store movement pathing for reactions
-
-https://forum.defold.com/t/repeating-texture/49201/2?u=pkeod
-https://github.com/britzl/lumiere
-https://github.com/defold/sample-lights-and-shadows

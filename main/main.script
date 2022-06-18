@@ -1,6 +1,6 @@
+local mapper = require "in.mapper"
+local triggers = require "in.triggers"
 local gamelogic = require"main/gamelogic"
-
-local rangespritesize
 
 function init(self)
 	msg.post(".", "acquire_input_focus")
@@ -33,50 +33,16 @@ function init(self)
 	
 	go.set("#bg", "tint", vmath.vector4(.9,1,.8,1)) --green grass
 
-	rangespritesize = go.get("moverange#sprite", "size.x")
-	go.set("moverange#sprite", "tint", vmath.vector4(0.8,0.6,1,0.2)) --move range bubble is purple
-	go.set("attackrange#sprite", "tint", vmath.vector4(1,0.8,0.2,0.25)) --attack range bubble is yellow
-
 	--TEMP
 	local mainplayer = collectionfactory.create("/players#collectionfactory", vmath.vector3(1152/2,648/2,0), nil, {[hash"/go"] = {controllable = true}})
 	local foe = collectionfactory.create("/players#collectionfactory", vmath.vector3(1152/2+150,648/2,0), nil, {[hash"/go"] = {team=1, race = hash"dog"}})
 	msg.post(mainplayer[hash"/go"], hash"start_turn")
 	--TEMP
-
-	local width = 2048
-	local height = 1024
-	local channels = 4
-
-	-- we have to create table with next fields: buffer, width, height, channels
-	self.buffer_info = {
-		buffer = buffer.create(width * height, {{name = hash("rgba"), type = buffer.VALUE_TYPE_UINT8, count = channels}}),
-		width = width,
-		height = height,
-		channels = channels -- 3 for rgb, 4 for rgba
-	}
-	self.dirty = false
-	self.resource_path = go.get("/level#draw", "texture0")
-	self.header = {
-		width = width,
-		height = height,
-		type = resource.TEXTURE_TYPE_2D,
-		format = resource.TEXTURE_FORMAT_RGBA,
-		num_mip_maps = 1
-	}
-	drawpixels.fill(self.buffer_info, 0, 0, 0, 0)
 end
 
 function update(self, dt)
 	if self.selection_target then
 		go.set("selection", "position", go.get(self.selection_target.path, "position"))
-	end
-	if self.show_attackrange then
-		go.set("attackrange", "position", go.get(self.active_player.path, "position"))
-	end
-	self.dirty = true
-	if self.dirty then
-		self.dirty = false
-		resource.set_texture(self.resource_path, self.header, self.buffer_info.buffer)
 	end
 end
 
@@ -89,13 +55,6 @@ end
 function on_message(self, message_id, message, sender)
 	if message_id == hash"turn_info" then
 		self.active_player = sender
-		--drawpixels.filled_circle(self.buffer_info, 1152/2,648/2+372, (message.moverange+32)*2, 128, 128, 255, 192, true)
-		drawpixels.start_fill()
-		drawpixels.arc(self.buffer_info, 1152/2,648/2+372, (message.moverange+32), 0, math.pi/4,128, 128, 255, 255)
-		--drawpixels.circle(self.buffer_info, 1152/2,648/2+372, 100, 128, 128, 255, 255, true)
-		drawpixels.fill_area(self.buffer_info, 1152/2+5,648/2+375, 128, 128, 255, 192)
-		drawpixels.end_fill()
-		self.dirty = true
 	elseif message_id == hash"player_hover" then
 		self.player_hover = sender
 		if self.selectable_targets[sender.path] and gamelogic.target_funcs[self.active_skill.target](self.active_player,sender) then
@@ -115,22 +74,13 @@ function on_message(self, message_id, message, sender)
 		end
 		self.active_skill = message.skill
 		if self.active_skill and self.active_skill.target ~= gamelogic.TARGET_SELF then
-			self.show_attackrange = true
-			go.set("attackrange", "position", go.get(self.active_player.path, "position"))
-			local range = self.active_skill.range or 0
-			go.set("attackrange", "scale", vmath.vector3((range+32)*2/rangespritesize)) --radius + 64 as with moverange
-			go.set("attackrange#sprite", "scale", vmath.vector3()) --bubble visually expands but code treats as always full
-			go.animate("attackrange#sprite", "scale", go.PLAYBACK_ONCE_FORWARD, vmath.vector3(1), go.EASING_LINEAR, 1/3)
 			for target,b in pairs(self.selectable_targets) do
 				if gamelogic.target_funcs[self.active_skill.target](self.active_player,target) then
 					self:HighlightPlayer(target, not(self.player_hover and self.player_hover == target)) --full select already hovered target
 				end
 			end
 		else --deselecting skill
-			self.show_attackrange = false --don't forget me! otherwise 0 scale causes some wonky selectability bugs
-			go.cancel_animations("attackrange", "scale")
-			go.set("attackrange", "position", vmath.vector3())
-			go.set("attackrange", "scale", vmath.vector3())
+			
 		end
 		if self.active_skill and self.active_skill.target == gamelogic.TARGET_SELF then
 			self:HighlightPlayer(self.active_player)

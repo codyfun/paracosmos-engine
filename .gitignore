@@ -1,5 +1,6 @@
 /.internal
 /build
+/content
 .externalToolBuilders
 .DS_Store
 Thumbs.db
@@ -8,3 +9,5 @@ Thumbs.db
 .project
 .cproject
 builtins
+manifest.private.der
+manifest.public.der

@@ -10,45 +10,22 @@ local easing_square = vmath.vector{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1
 go.property("controllable", false)
 go.property("team", 0)
 go.property("race", hash("human"))
-go.property("move_range", 160)
 
 function init(self)
-	msg.post("art#sprite", "play_animation", { id = self.race }) --graphic for my race
+	msg.post(".", "acquire_input_focus")
+	msg.post("art#sprite", "play_animation", { id = self.race }) --apply my race image
 	go.set("art#sprite", "tint", RACE_COLORS[self.race]) --race color
 	go.set("bg#sprite", "tint", (self.team == 0) and vmath.vector4(0,1,0,0.4) or vmath.vector4(1,0.5,0,0.4)) --team color circle
 	go.set("hpbar#sprite", "tint", vmath.vector4(1,0,0,1)) --red HP
-	go.animate("art", "scale.y", go.PLAYBACK_LOOP_PINGPONG, 0.95, easing_square, 1) --squish 5%
+	go.animate("art", "scale.y", go.PLAYBACK_LOOP_PINGPONG, 0.95, easing_square, 1) --idle bounce 5%
 	self.dir = vmath.vector3()
 end
 
 function update(self, dt)
-	if vmath.vector3() ~= self.dir then
-		local new_pos = go.get_position() + self.dir * walk_speed * dt
-		if vmath.length_sqr(new_pos - self.anchor) > self.move_range*self.move_range then
-			new_pos = self.anchor + vmath.normalize(new_pos - self.anchor) * self.move_range --snap to max move_range distance from starting point
-		end
-		go.set_position(new_pos)
-		self.dir = vmath.vector3() --reset input data per frame
-		if not self.move_bouncing then
-			go.animate("art", "position.y", go.PLAYBACK_LOOP_PINGPONG, -28, easing_square, 0.5) --hop 4px vertically
-			self.move_bouncing = true
-		end
-	elseif self.move_bouncing then
-		go.cancel_animations("art", "position.y") --stop hop
-		go.set("art", "position.y", -32)
-		self.move_bouncing = false
-	end
 end
 
 function on_message(self, message_id, message, sender)
-	if message_id == hash"start_turn" then
-		msg.post(".", "acquire_input_focus")
-		self.anchor = go.get(".", "position")
-		self.has_turn = true
-		msg.post(sender, "turn_info", {pos = go.get(".", "position"), moverange=self.move_range})
-	elseif self.has_turn and message_id == hash"contact_point_response" and message.other_group == hash"player" or message.other_group == hash"obstacle" then
-		go.set_position(go.get_position() + message.normal * message.distance) --move away from collisions
-	elseif message_id == hash"cursor_over" then
+	if message_id == hash"cursor_over" then
 		msg.post("/level", "player_hover")
 	elseif message_id == hash"cursor_out" then
 		msg.post("/level", "player_unhover")
@@ -64,15 +41,5 @@ function on_message(self, message_id, message, sender)
 end
 
 function on_input(self, action_id, action)
-	if self.controllable then
-		if action_id == hash"up" then
-			self.dir.y = self.dir.y + 1
-		elseif action_id == hash"down" then
-			self.dir.y = self.dir.y - 1
-		elseif action_id == hash"left" then
-			self.dir.x = self.dir.x - 1
-		elseif action_id == hash"right" then
-			self.dir.x = self.dir.x + 1
-		end
-	end
+	
 end
