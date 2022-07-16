@@ -157,3 +157,4 @@ end
 
 RNG.randomseed = RNG.setSeed
 
+return RNG
