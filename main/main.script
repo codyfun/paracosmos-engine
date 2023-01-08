@@ -5,100 +5,17 @@ local gamelogic = require"main/gamelogic"
 function init(self)
 	msg.post(".", "acquire_input_focus")
 	
-	self.selectable_targets = {}
-
-	self.HighlightPlayer = function (self, player, alt)
-		if alt then --alt highlight: yellow and no selection fx
-			msg.post(player, "highlight_target", {color = vmath.vector4(1,.8,0,1), weight=0.5})
-		else
-			msg.post(player, "highlight_target")
-			self.selection_target = player
-			go.set("selection", "position", go.get(player.path, "position"))
-			local color = (go.get(player, "team") == 0) and vmath.vector4(0,0,.8,1) or vmath.vector4(.5,0,0,1)
-			go.set("selection#sprite", "tint", color)
-		end
-	end
-
-	self.UnhighlightPlayer = function (self, player, alt)
-		if self.selection_target and (self.selection_target == player or self.selection_target.path == player) then
-			self.selection_target = nil --oops... i have not been consistent with choosing paths vs script components
-			go.set("selection#sprite", "tint", vmath.vector4(0,0,0,0))
-		end
-		if alt then --deselect to alt highlight state
-			self:HighlightPlayer(player, true)
-		else
-			msg.post(player, "clear_highlight")
-		end
-	end
 	
-	go.set("#bg", "tint", vmath.vector4(.9,1,.8,1)) --green grass
-
-	--TEMP
-	local mainplayer = collectionfactory.create("/players#collectionfactory", vmath.vector3(1152/2,648/2,0), nil, {[hash"/go"] = {controllable = true}})
-	local foe = collectionfactory.create("/players#collectionfactory", vmath.vector3(1152/2+150,648/2,0), nil, {[hash"/go"] = {team=1, race = hash"dog"}})
-	msg.post(mainplayer[hash"/go"], hash"start_turn")
-	--TEMP
 end
 
 function update(self, dt)
-	if self.selection_target then
-		go.set("selection", "position", go.get(self.selection_target.path, "position"))
-	end
+	
 end
 
 function on_input(self, action_id, action)
-	--[[if action_id == hash"touch" and action.pressed then
-		print(go.get("/cursor", "position"))
-	end]]
+	
 end
 
 function on_message(self, message_id, message, sender)
-	if message_id == hash"turn_info" then
-		self.active_player = sender
-	elseif message_id == hash"player_hover" then
-		self.player_hover = sender
-		if self.selectable_targets[sender.path] and gamelogic.target_funcs[self.active_skill.target](self.active_player,sender) then
-			self:HighlightPlayer(sender)
-		end
-	elseif message_id == hash"player_unhover" then
-		if self.selectable_targets[self.player_hover.path] and gamelogic.target_funcs[self.active_skill.target](self.active_player,sender) then
-			self:UnhighlightPlayer(sender, true)
-		end
-		self.player_hover = nil
-	elseif message_id == hash"set_active_skill" then
-		if self.active_skill then --clear all highlights for previously selected skill
-			for k,v in pairs(self.selectable_targets) do
-				self:UnhighlightPlayer(k)
-			end
-			self:UnhighlightPlayer(self.active_player)
-		end
-		self.active_skill = message.skill
-		if self.active_skill and self.active_skill.target ~= gamelogic.TARGET_SELF then
-			for target,b in pairs(self.selectable_targets) do
-				if gamelogic.target_funcs[self.active_skill.target](self.active_player,target) then
-					self:HighlightPlayer(target, not(self.player_hover and self.player_hover == target)) --full select already hovered target
-				end
-			end
-		else --deselecting skill
-			
-		end
-		if self.active_skill and self.active_skill.target == gamelogic.TARGET_SELF then
-			self:HighlightPlayer(self.active_player)
-		end
-	elseif message_id == hash"trigger_response" then
-		local other = gamelogic.cast_url(message.other_id)
-		if sender.path == hash"/attackrange" then
-			if message.enter then
-				self.selectable_targets[message.other_id] = true
-				if gamelogic.target_funcs[self.active_skill.target](self.active_player,message.other_id) then
-					self:HighlightPlayer(other, not(self.player_hover and self.player_hover == other)) --full select already hovered target
-				end
-			else
-				self.selectable_targets[message.other_id] = nil
-				if self.active_skill and self.active_skill.target ~= gamelogic.TARGET_SELF then
-					self:UnhighlightPlayer(other) --do not auto-unhighlight when clearing range by selecting auto-targeting attacks
-				end
-			end
-		end
-	end
+	
 end

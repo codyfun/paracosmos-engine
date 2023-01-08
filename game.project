@@ -6,7 +6,7 @@ dependencies#1 = https://github.com/britzl/gooey/archive/master.zip
 dependencies#2 = https://github.com/britzl/deftest/archive/master.zip
 
 [bootstrap]
-main_collection = /test/deftest.collectionc
+main_collection = /main/main.collectionc
 
 [input]
 game_binding = /input/game.input_bindingc
