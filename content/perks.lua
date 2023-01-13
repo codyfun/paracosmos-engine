@@ -1,3 +1,5 @@
+local gamelogic = require "main/gamelogic"
+
 local function SimpleStatPerk (data)
 	return {
 		name = dataname,
