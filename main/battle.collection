@@ -43,7 +43,7 @@ embedded_instances {
 embedded_instances {
   id: "gui"
   data: "components {\n"
-  "  id: \"main\"\n"
+  "  id: \"battle\"\n"
   "  component: \"/main/battle.gui\"\n"
   "  position {\n"
   "    x: 0.0\n"

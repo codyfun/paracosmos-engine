@@ -20,4 +20,15 @@ gamelogic.target_funcs = {
 	end,
 }
 
+gamelogic.GetExDesc_common = function (self, s, target)
+	if s == "low" then return self:power_func(target, 0)
+	elseif s == "high" then return self:power_func(target, 1) end
+	if string.sub(s, 1, 5) == "user." then
+		return self.user[string.sub(s, 6)]
+	elseif string.sub(s, 1, 7) == "target." then
+		return target[string.sub(s, 8)]
+	end
+	return self[s]
+end
+
 return gamelogic

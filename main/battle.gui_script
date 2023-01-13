@@ -1,5 +1,8 @@
 local gooey = require "gooey.gooey"
 local gamelogic = require "main/gamelogic"
+local mapper = require "in.mapper"
+local triggers = require "in.triggers"
+local richtext = require "richtext.richtext"
 local content = {
 	skills = require "content/skills",
 	chars = require "content/chars",
@@ -30,18 +33,61 @@ local gui_colors = {
 	}
 }
 
-local set_text_autoscaled = function (node, text, base_scale, base_width)
-	gui.set_text(node, text)
-	local text_width = resource.get_text_metrics(gui.get_font_resource(gui.get_font(node)), text).width
-	if text_width > base_width then
-		gui.set_scale(node, base_width/text_width*vmath.vector3(base_scale))
-	else
-		gui.set_scale(node, vmath.vector3(base_scale))
-	end
-end
-
 function init(self)
 	gooey.acquire_input()
+
+	mapper.bind(triggers.KEY_SPACE, "confirm", 1)
+	mapper.bind(triggers.KEY_ENTER, "confirm", 1)
+	mapper.bind(triggers.KEY_ESC, "cancel", 1)
+
+	self.rich_text_nodes = {}
+	self.richtext_autoscale = function (node, text, base_scale, base_width)
+		for i,old_data in pairs(self.rich_text_nodes) do
+			if old_data[1] == node then
+				richtext.remove(old_data[2])
+				table.remove(self.rich_text_nodes, i)
+				if old_data[4].valign == richtext.VALIGN_BOTTOM then
+					gui.set_position(node, gui.get_position(node) - vmath.vector3(0,old_data[3].height*gui.get_scale(node).y,0))
+				end
+				break
+			end
+		end
+		if text == "" then return end
+		local settings = {
+			parent = node,
+			color = gui.get_color(node),
+			align = ({
+				[gui.PIVOT_N] = richtext.ALIGN_CENTER,
+				[gui.PIVOT_CENTER] = richtext.ALIGN_CENTER,
+				[gui.PIVOT_S] = richtext.ALIGN_CENTER,
+				[gui.PIVOT_E] = richtext.ALIGN_RIGHT,
+			})[gui.get_pivot(node)],
+			valign = ({
+				[gui.PIVOT_W] = richtext.VALIGN_MIDDLE,
+				[gui.PIVOT_CENTER] = richtext.VALIGN_MIDDLE,
+				[gui.PIVOT_E] = richtext.VALIGN_MIDDLE,
+				[gui.PIVOT_SW] = richtext.VALIGN_BOTTOM,
+			})[gui.get_pivot(node)],
+			combine_words = true,
+		}
+		if base_scale then
+			settings.line_spacing = 0
+		else
+			settings.width = gui.get_size(node).x
+		end
+		local output, metrics = richtext.create(text, "main", settings)
+		table.insert(self.rich_text_nodes, {node, output, metrics, settings})
+		if base_scale then
+			if metrics.width > base_width then
+				gui.set_scale(node, base_width/metrics.width*vmath.vector3(base_scale))
+			else
+				gui.set_scale(node, vmath.vector3(base_scale))
+			end
+		end
+		if settings.valign == richtext.VALIGN_BOTTOM then
+			gui.set_position(node, gui.get_position(node) + vmath.vector3(0,metrics.height*gui.get_scale(node).y,0))
+		end
+	end
 
 	self.skill_list = {}
 	self.char1_list = {}
@@ -50,6 +96,7 @@ function init(self)
 	self.turn_count = 0
 	self.enemy_turn = false
 	self.enemy_timer = math.huge
+	self.logtext = ""
 	self.rng = require "main/rng"
 	self.rng:init()
 
@@ -82,9 +129,8 @@ function init(self)
 	end
 
 	self.write_log = function (text)
-		local log = gui.get_node("log_text")
-		local logtext = gui.get_text(log)
-		gui.set_text(log, logtext .. "\n" .. text)
+		self.logtext = self.logtext .. "\n" .. text
+		self.richtext_autoscale(gui.get_node("log_text"), self.logtext)
 	end
 
 	self.get_character_controllable = function (char, enemy)
@@ -96,7 +142,7 @@ function init(self)
 		for i,item in ipairs(list.items) do
 			local button = item.nodes[hash"skillitem_btn"]
 			if item.data then
-				set_text_autoscaled(item.nodes[hash"skillitem_text"], item.data.name, 0.8, 125)
+				self.richtext_autoscale(item.nodes[hash"skillitem_text"], item.data.name, 0.8, 125)
 				if self.skill_selected == item.data then
 					gui.set_color(button, (self.get_character_controllable() or self.enemy_turn) and gui_colors.skilllist.selected or gui_colors.skilllist.disabled_selected)
 				else
@@ -110,11 +156,11 @@ function init(self)
 				gui.set_color(over_button, self.get_character_controllable() and gui_colors.skilllist.hover or gui_colors.skilllist.disabled_hover)
 			end
 			if not self.skill_selected and list.over_item.data then
-				gui.set_text(gui.get_node("tooltip_text"), list.over_item.data.desc)
+				self.richtext_autoscale(gui.get_node("tooltip_text"), list.over_item.data.desc)
 			end
 		end
 		if list.out_item_now and not self.skill_selected then
-			gui.set_text(gui.get_node("tooltip_text"), "")
+			self.richtext_autoscale(gui.get_node("tooltip_text"), "")
 		end
 	end
 
@@ -138,7 +184,7 @@ function init(self)
 		self.skill_selected = list.selected_item.data
 		self.selected_target = nil
 		local data = list.selected_item.data
-		gui.set_text(gui.get_node("tooltip_text"), data.desc)
+		self.richtext_autoscale(gui.get_node("tooltip_text"), data.desc)
 		if self.get_character_controllable() then
 			gui.set_alpha(gui.get_node("confirmbutton"), 1)
 			if data.target then
@@ -151,7 +197,8 @@ function init(self)
 								self.selected_target = {char.data, char.nodes}
 								self.highlight_chosen_target(char.nodes, color)
 								if data.GetExDesc then
-									gui.set_text(gui.get_node("tooltip_text"), data.desc .. "\n" .. data:GetExDesc(self.selected_target[1]))
+									local exdesc, replacedesc = data:GetExDesc(self.selected_target[1])
+									self.richtext_autoscale(gui.get_node("tooltip_text"), replacedesc and exdesc or (data.desc .. "\n" .. exdesc))
 								end
 							else
 								self.highlight_unchosen_target(char.nodes, color)
@@ -167,7 +214,7 @@ function init(self)
 	self.deselect_skill = function (button)
 		gui.set_color(button or self.skill_button_selected, button and gui_colors.skilllist.hover or gui_colors.skilllist.normal) --interface hack. pass button if over, don't if on confirm instead
 		if not button then
-			gui.set_text(gui.get_node("tooltip_text"), "")
+			self.richtext_autoscale(gui.get_node("tooltip_text"), "")
 		end
 		self.skill_button_selected = nil
 		self.skill_selected = nil
@@ -182,10 +229,10 @@ function init(self)
 	self.update_charlist_both = function (list)
 		for i,item in ipairs(list.items) do
 			if item.data then
-				set_text_autoscaled(item.nodes[hash"charitem_text"], item.data.name, 1, 200)
+				self.richtext_autoscale(item.nodes[hash"charitem_text"], item.data.name, 1, 200)
 				gui.set_scale(item.nodes[hash"charitem_hpbar"], vmath.vector3(item.data.hp / item.data.hpmax, 1, 1))
 				gui.set_color(item.nodes[hash"charitem_hptext"], vmath.vector3(1,0,0) * item.data.hp / item.data.hpmax)
-				set_text_autoscaled(item.nodes[hash"charitem_hptext"], "HP: " .. item.data.hp .. "/" .. item.data.hpmax, 0.4, 200)
+				self.richtext_autoscale(item.nodes[hash"charitem_hptext"], "HP: " .. item.data.hp .. "/" .. item.data.hpmax, 0.4, 200)
 				gui.set_texture(item.nodes[hash"charitem_image"], "player")
 				gui.play_flipbook(item.nodes[hash"charitem_image"], item.data.icon)
 				gui.set_color(item.nodes[hash"charitem_image"], item.data.iconcolor)
@@ -230,7 +277,8 @@ function init(self)
 					self.selected_target = {list.selected_item.data, list.selected_item.nodes}
 					self.highlight_chosen_target(list.selected_item.nodes)
 					if self.skill_selected.GetExDesc then
-						gui.set_text(gui.get_node("tooltip_text"), self.skill_selected.desc .. "\n" .. self.skill_selected:GetExDesc(self.selected_target[1]))
+						local exdesc, replacedesc = self.skill_selected:GetExDesc(self.selected_target[1])
+						self.richtext_autoscale(gui.get_node("tooltip_text"), replacedesc and exdesc or (self.skill_selected.desc .. "\n" .. exdesc))
 					end
 					sound.play("/gui#click")
 				end
@@ -316,7 +364,7 @@ function init(self)
 
 	self.set_active_character = function (char)
 		self.active_character = char
-		set_text_autoscaled(gui.get_node("skilllist_title"), char.name .. "'s Moves:", 0.8, 175)
+		self.richtext_autoscale(gui.get_node("skilllist_title"), string.format("%s's moves", char.name), 0.8, 175)
 		self.skill_list = char.skills
 		self:do_gooey()
 	end
@@ -361,7 +409,7 @@ function init(self)
 	gui.set_position(charlist2_gui[hash"charitem_text"], vmath.vector3(-80,35,0))
 	gui.set_position(charlist2_gui[hash"charitem_image"], vmath.vector3(-80,35,0))
 	gui.set_scale(charlist2_gui[hash"charitem_pointer_tf"], vmath.vector3(-1,1,1))
-	gui.move_above(gui.get_node("tooltip"), gui.get_node("charlist2_bg"))
+	gui.move_above(gui.get_node("tooltip_bg"), gui.get_node("charlist2_bg"))
 
 	table.insert(self.char1_list, self.init_player("hero"))
 	table.insert(self.char1_list, self.init_player("uncle"))
@@ -376,7 +424,7 @@ end
 function update(self, dt)
 	if self.enemy_turn then
 		self.enemy_timer = self.enemy_timer + dt
-		if self.enemy_timer > 2 then
+		if self.enemy_timer > 2 or self.skip_enemy_turn then
 			if not self.get_character_controllable(self.active_character, true) then
 				local next_character_available = false
 				for i,char in ipairs(self.char2_list) do
@@ -387,6 +435,7 @@ function update(self, dt)
 					end
 				end
 				if not next_character_available then
+					self.skip_enemy_turn = false
 					self.start_turn()
 					return
 				end
@@ -408,9 +457,10 @@ function update(self, dt)
 				self.selected_target = (skill_targets[self.rng:random(#skill_targets)])
 				self.highlight_chosen_target(self.selected_target[2])
 				if chosen_move.data.GetExDesc then
-					gui.set_text(gui.get_node("tooltip_text"), chosen_move.data.desc .. "\n" .. chosen_move.data:GetExDesc(self.selected_target[1]))
+					local exdesc, replacedesc = chosen_move.data:GetExDesc(self.selected_target[1])
+					self.richtext_autoscale(gui.get_node("tooltip_text"), replacedesc and exdesc or (chosen_move.data.desc .. "\n" .. exdesc))
 				else
-					gui.set_text(gui.get_node("tooltip_text"), chosen_move.data.desc)
+					self.richtext_autoscale(gui.get_node("tooltip_text"), chosen_move.data.desc)
 				end
 				self:do_gooey()
 				self.enemy_timer = 0
@@ -426,7 +476,20 @@ function update(self, dt)
 end
 
 function on_input(self, action_id, action)
-	if not self.enemy_turn then
+	if self.enemy_turn then
+		if action.pressed then
+			if action_id == hash"touch" then
+				self.enemy_timer = 3
+			else
+				action_id = mapper.on_input(action_id, 1)
+				if action_id == "confirm" then
+					self.enemy_timer = 3
+				elseif action_id == "cancel" then
+					self.skip_enemy_turn = true
+				end
+			end
+		end
+	else
 		self:do_gooey(action_id, action)
 	end
 end
