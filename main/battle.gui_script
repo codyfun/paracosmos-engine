@@ -1,0 +1,345 @@
+local gooey = require "gooey.gooey"
+local rng = require "main/rng"
+local gamelogic = require "main/gamelogic"
+local content = {
+	skills = require "content/skills",
+}
+
+local gui_colors = {
+	skilllist = {
+		normal = vmath.vector4(.9,.9,1,1),
+		hover = vmath.vector4(.80,.80,.95,1),
+		selected = vmath.vector4(.65,.65,.9,1),
+		disabled = vmath.vector4(.9,.9,.9,1),
+		disabled_hover = vmath.vector4(.85,.85,.85,1),
+		disabled_selected = vmath.vector4(.8,.8,.8,1),
+	},
+	charlist = {
+		normal = vmath.vector4(1,.90,.80,1),
+		highlight_foe = vmath.vector4(1,.75,.6,1),
+		highlight_ally = vmath.vector4(.8,.95,.85,1),
+		acttext = {
+			active = vmath.vector4(0,.6,0,1),
+			ready = vmath.vector4(.1,.1,.6,1),
+			viewing = vmath.vector4(.4,.4,.4,1),
+		},
+	},
+	confirmbutton = {
+		normal = vmath.vector4(.8,1,.8,1),
+		hover = vmath.vector4(.6,1,.6,1),
+	}
+}
+
+local set_text_autoscaled = function (node, text, base_scale, base_width)
+	gui.set_text(node, text)
+	local text_width = resource.get_text_metrics(gui.get_font_resource(gui.get_font(node)), text).width
+	if text_width > base_width then
+		gui.set_scale(node, base_width/text_width*vmath.vector3(base_scale))
+	else
+		gui.set_scale(node, vmath.vector3(base_scale))
+	end
+end
+
+function init(self)
+	gooey.acquire_input()
+
+	self.skill_list = {}
+	self.char1_list = {}
+	self.char2_list = {}
+	self.skill_targets = {}
+	self.turncount = 0
+
+	self.write_log = function (text)
+		local log = gui.get_node("log_text")
+		local logtext = gui.get_text(log)
+		gui.set_text(log, logtext .. "\n" .. text)
+	end
+
+	self.get_character_controllable = function (char)
+		char = char or self.active_character
+		return (not char.enemy) and (char.actions > 0)
+	end
+
+	self.update_skilllist = function (list)
+		for i,item in ipairs(list.items) do
+			local button = item.nodes[hash"skillitem_btn"]
+			if item.data then
+				set_text_autoscaled(item.nodes[hash"skillitem_text"], item.data.name, 0.8, 125)
+				if self.skill_selected == item.data then
+					gui.set_color(button, self.get_character_controllable() and gui_colors.skilllist.selected or gui_colors.skilllist.disabled_selected)
+				else
+					gui.set_color(button, self.get_character_controllable() and gui_colors.skilllist.normal or gui_colors.skilllist.disabled)
+				end
+			end
+		end
+		if list.over_item then
+			local over_button = list.over_item.nodes[hash"skillitem_btn"]
+			if self.skill_button_selected ~= over_button then
+				gui.set_color(over_button, self.get_character_controllable() and gui_colors.skilllist.hover or gui_colors.skilllist.disabled_hover)
+			end
+			if not self.skill_selected and list.over_item.data then
+				gui.set_text(gui.get_node("tooltip_text"), list.over_item.data.desc)
+			end
+		end
+		if list.out_item_now and not self.skill_selected then
+			gui.set_text(gui.get_node("tooltip_text"), "")
+		end
+	end
+
+	self.selected_skilllist = function (list)
+		if not list.selected_item.data then return end
+		local button = list.selected_item.nodes[hash"skillitem_btn"]
+		sound.play("/gui#click")
+		if self.skill_button_selected then
+			if self.skill_button_selected ~= button then --deselect previous skill when clicking new one
+				for data,nodes in pairs(self.skill_targets) do
+					self.unhighlight_target(nodes)
+				end
+				self.skill_targets = {}
+				gui.set_color(self.skill_button_selected, gui_colors.skilllist.normal)
+			else --click on selected skill to deselect
+				self.deselect_skill(self.skill_button_selected) --contains skill_targets clearing
+				return --do not fallthrough to selection
+			end
+		end
+		self.skill_button_selected = button
+		self.skill_selected = list.selected_item.data
+		self.selected_target = nil
+		local data = list.selected_item.data
+		gui.set_text(gui.get_node("tooltip_text"), data.desc)
+		if self.get_character_controllable() then
+			gui.set_alpha(gui.get_node("confirmbutton"), 1)
+			if data.target then
+				for _,char_list in pairs{self.char_list1_gui, self.char_list2_gui} do
+					for i,char in pairs(char_list.items) do
+						if char.data and data.target(self.active_character, char.data) then
+							self.skill_targets[char.data] = char.nodes
+							local color = (self.active_character.enemy == char.data.enemy) and gui_colors.charlist.highlight_ally or gui_colors.charlist.highlight_foe
+							if not self.selected_target then
+								self.selected_target = {char.data, char.nodes}
+								self.highlight_chosen_target(char.nodes, color)
+							else
+								self.highlight_unchosen_target(char.nodes, color)
+							end
+						end
+					end
+				end
+			end
+		end
+		self:do_gooey()
+	end
+
+	self.deselect_skill = function (button)
+		gui.set_color(button or self.skill_button_selected, button and gui_colors.skilllist.hover or gui_colors.skilllist.normal) --interface hack. pass button if over, don't if on confirm instead
+		if not button then
+			gui.set_text(gui.get_node("tooltip_text"), "")
+		end
+		self.skill_button_selected = nil
+		self.skill_selected = nil
+		self.selected_target = nil
+		gui.set_alpha(gui.get_node("confirmbutton"), 0)
+		for data,nodes in pairs(self.skill_targets) do
+			self.unhighlight_target(nodes)
+		end
+		self.skill_targets = {}
+	end
+
+	self.update_charlist_both = function (list)
+		for i,item in ipairs(list.items) do
+			if item.data then
+				set_text_autoscaled(item.nodes[hash"charitem_text"], item.data.name, 1, 200)
+				gui.set_scale(item.nodes[hash"charitem_hpbar"], vmath.vector3(item.data.hp / item.data.hpmax, 1, 1))
+				gui.set_color(item.nodes[hash"charitem_hptext"], vmath.vector3(1,0,0) * item.data.hp / item.data.hpmax)
+				set_text_autoscaled(item.nodes[hash"charitem_hptext"], "HP: " .. item.data.hp .. "/" .. item.data.hpmax, 0.4, 200)
+				gui.set_texture(item.nodes[hash"charitem_image"], "player")
+				gui.play_flipbook(item.nodes[hash"charitem_image"], item.data.icon)
+				gui.set_color(item.nodes[hash"charitem_image"], item.data.iconcolor)
+				if self.get_character_controllable(item.data) then
+					if item.data == self.active_character then
+						gui.set_text(item.nodes[hash"charitem_acttext"], "Active")
+						gui.set_color(item.nodes[hash"charitem_acttext"], gui_colors.charlist.acttext.active)
+					else 
+						gui.set_text(item.nodes[hash"charitem_acttext"], "Ready")
+						gui.set_color(item.nodes[hash"charitem_acttext"], gui_colors.charlist.acttext.ready)
+					end
+				else
+					if item.data == self.active_character then
+						gui.set_text(item.nodes[hash"charitem_acttext"], "Viewing")
+						gui.set_color(item.nodes[hash"charitem_acttext"], gui_colors.charlist.acttext.viewing)
+					else
+						gui.set_text(item.nodes[hash"charitem_acttext"], "")
+					end
+				end
+			end
+		end
+	end
+
+	self.selected_charlist = function (list)
+		if not list.selected_item.data then return end
+		local button = list.selected_item.nodes[hash"charitem_btn"]
+		if self.get_character_controllable() and self.skill_selected then
+			if self.skill_targets[list.selected_item.data] then
+				if list.selected_item.data == self.selected_target[1] then
+					--TODO: check for double click i guess
+				else
+					local color = (self.active_character.enemy == self.selected_target[1].enemy) and gui_colors.charlist.highlight_ally or gui_colors.charlist.highlight_foe
+					self.highlight_unchosen_target(self.selected_target[2], color)
+					self.selected_target = {list.selected_item.data, list.selected_item.nodes}
+					self.highlight_chosen_target(list.selected_item.nodes, color)
+					sound.play("/gui#click")
+				end
+			end
+		else
+			if self.skill_selected then
+				self.deselect_skill()
+			end
+			if self.active_character ~= list.selected_item.data then
+				sound.play("/gui#click")
+				self.set_active_character(list.selected_item.data)
+			end
+		end
+		self:do_gooey()
+	end
+
+	self.highlight_chosen_target = function (nodes, color)
+		gui.cancel_animation(nodes[hash"charitem_btn"], gui.PROP_COLOR)
+		gui.set_color(nodes[hash"charitem_btn"], color)
+		gui.set_visible(nodes[hash"charitem_pointer"], true)
+		gui.cancel_animation(nodes[hash"charitem_pointer"], gui.PROP_COLOR)
+		gui.cancel_animation(nodes[hash"charitem_pointer"], gui.PROP_POSITION)
+		gui.set_position(nodes[hash"charitem_pointer"], vmath.vector3(125,0,0))
+		gui.play_flipbook(nodes[hash"charitem_pointer"], "trianglebig")
+		gui.set_color(nodes[hash"charitem_pointer"], color)
+	end
+
+	self.highlight_unchosen_target = function (nodes, color)
+		gui.set_color(nodes[hash"charitem_btn"], gui_colors.charlist.normal)
+		gui.animate(nodes[hash"charitem_btn"], gui.PROP_COLOR, color, gui.EASING_INOUTQUAD, 1, 0, nil, gui.PLAYBACK_LOOP_PINGPONG)
+		gui.set_visible(nodes[hash"charitem_pointer"], true)
+		gui.set_position(nodes[hash"charitem_pointer"], vmath.vector3(125,0,0))
+		gui.play_flipbook(nodes[hash"charitem_pointer"], "trianglesmall")
+		gui.set_color(nodes[hash"charitem_pointer"], gui_colors.charlist.normal)
+		gui.animate(nodes[hash"charitem_pointer"], gui.PROP_COLOR, color, gui.EASING_INOUTQUAD, 1, 0, nil, gui.PLAYBACK_LOOP_PINGPONG)
+		gui.animate(nodes[hash"charitem_pointer"], gui.PROP_POSITION, vmath.vector3(119,0,0), gui.EASING_INOUTQUAD, 1.5, 0, nil, gui.PLAYBACK_LOOP_PINGPONG)
+	end
+
+	self.unhighlight_target = function (nodes)
+		gui.cancel_animation(nodes[hash"charitem_btn"], gui.PROP_COLOR)
+		gui.set_color(nodes[hash"charitem_btn"], gui_colors.charlist.normal)
+		gui.set_visible(nodes[hash"charitem_pointer"], false)
+		gui.cancel_animation(nodes[hash"charitem_pointer"], gui.PROP_COLOR)
+		gui.cancel_animation(nodes[hash"charitem_pointer"], gui.PROP_POSITION)
+	end
+
+	self.update_confirmbutton = function (button)
+		if self.skill_selected then
+			if button.over_now then
+				gui.set_color(button.node, gui_colors.confirmbutton.hover)
+			end
+			if button.out_now then
+				gui.set_color(button.node, gui_colors.confirmbutton.normal)
+			end
+		end
+	end
+
+	self.press_confirmbutton = function (button)
+		if self.skill_selected then
+			sound.play("/gui#click")
+			gui.set_color(button.node, gui_colors.confirmbutton.normal)
+			self.active_character.actions = self.active_character.actions - 1
+			if self.skill_selected.OnUse then
+				self.write_log(self.skill_selected:OnUse(self.selected_target[1]))
+			end
+			self.deselect_skill()
+			local next_character_available = false
+			for i,char in ipairs(self.active_character.enemy and self.char2_list or self.char1_list) do
+				if char.actions > 0 then
+					self.set_active_character(char)
+					next_character_available = true
+					break
+				end
+			end
+			if not next_character_available then
+				self.start_turn(true)
+			end
+		end
+		self:do_gooey()
+	end
+
+	self.set_active_character = function (char)
+		self.active_character = char
+		set_text_autoscaled(gui.get_node("skilllist_title"), char.name .. "'s Moves:", 0.8, 175)
+		self.skill_list = char.skills
+		self:do_gooey()
+	end
+
+	self.start_turn = function (enemy_turn)
+		if not enemy_turn then self.turncount = self.turncount + 1 end --assuming always player turn then enemy turn
+		gui.set_text(gui.get_node("turninfo_text"), string.format(enemy_turn and "Enemy Turn %d" or "Player Turn %d", self.turncount))
+		for i,char in pairs(enemy_turn and self.char2_list or self.char1_list) do
+			char.actions = 1
+		end
+		self.set_active_character(self.char1_list[1])
+	end
+
+	self.do_gooey = function(self, action_id, action) -- run on on_input, but also used to run the update functions again after a selection function during middle of primary call
+		self.char_list1_gui = gooey.dynamic_list("charlist1_bg", "charlist1_stencil", "charitem1_bg", self.char1_list, action_id, action, nil, self.selected_charlist, self.update_charlist_both)
+		self.char_list2_gui = gooey.dynamic_list("charlist2_bg", "charlist2_stencil", "charitem2_bg", self.char2_list, action_id, action, nil, self.selected_charlist, self.update_charlist_both)
+		gooey.dynamic_list("skilllist_bg", "skilllist_stencil", "skillitem_bg", self.skill_list, action_id, action, nil, self.selected_skilllist, self.update_skilllist)
+		gooey.button("confirmbutton", action_id, action, self.press_confirmbutton, self.update_confirmbutton)
+	end
+	
+	local charlist2_gui = gui.clone_tree(gui.get_node("charlist1_bg"))
+	local charlist2_remap = {
+		[hash"charlist1_bg"] = hash"charlist2_bg",
+		[hash"charlist1_stencil"] = hash"charlist2_stencil",
+		[hash"charitem1_bg"] = hash"charitem2_bg",
+	}
+	for id,node in pairs(charlist2_gui) do
+		if charlist2_remap[id] then
+			gui.set_id(node, charlist2_remap[id])
+		else
+			gui.set_id(node, id)
+		end
+	end
+	gui.set_position(charlist2_gui[hash"charlist1_bg"], vmath.vector3(1027,648,0))
+	gui.set_position(charlist2_gui[hash"charitem_text"], vmath.vector3(-80,35,0))
+	gui.set_position(charlist2_gui[hash"charitem_image"], vmath.vector3(-80,35,0))
+	gui.set_scale(charlist2_gui[hash"charitem_pointer_tf"], vmath.vector3(-1,1,1))
+	gui.move_above(gui.get_node("tooltip"), gui.get_node("charlist2_bg"))
+
+	self.char1_list = {
+		{name = "Hero", hp = 250, hpmax = 250, icon="human", iconcolor=vmath.vector4(.0, .6, .6, 1),
+		skills = {
+			content.skills["attack"],
+			content.skills["heal"],
+			content.skills["defend"],
+			content.skills["skip_turn"],
+		}},
+		{name = "Uncle", hp = 120, hpmax = 120, icon="dog", iconcolor=vmath.vector4(.6, .4, .0, 1),
+		skills = {
+			content.skills["attack"],
+			content.skills["defend"],
+			content.skills["skip_turn"],
+		}},
+	}
+	self.char2_list = {
+		{name = "Bun", enemy = true, hp = 60, hpmax = 60, icon="rabbit", iconcolor=vmath.vector4(.7, .7, .2, 1),
+		skills = {
+			content.skills["attack"],
+			content.skills["skip_turn"],
+		}},
+		{name = "Bun", enemy = true, hp = 60, hpmax = 60, icon="rabbit", iconcolor=vmath.vector4(.7, .7, .2, 1),
+		skills = {
+			content.skills["attack"],
+			content.skills["skip_turn"],
+		}},
+	}
+	
+	self.start_turn()
+	self:do_gooey()
+end
+
+function on_input(self, action_id, action)
+	self:do_gooey(action_id, action)
+end

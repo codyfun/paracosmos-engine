@@ -1,22 +1,22 @@
-local function SimpleStatPerk (name, stat_id, stat_amount)
+local function SimpleStatPerk (data)
 	return {
-		name = name,
+		name = dataname,
 		OnEquip = function (self, user)
-			self.stat_mod = {Apply = function(self,value) return value + stat_amount end}
-			user[stat_id]:AddMod(self.stat_mod)
+			self.stat_mod = {Apply = function(self,value) return value + 10 end}
+			user[data.stat_id]:AddMod(self.stat_mod)
 		end,
 		OnUnequip = function (self, user)
-			user[stat_id]:RemoveMod(self.stat_mod)
+			user[data.stat_id]:RemoveMod(self.stat_mod)
 		end,
 	}
 end
 
 return {
-	stat_hp = SimpleStatPerk("Endurance", "maxhp", 10),
-	stat_attack = SimpleStatPerk("Strength", "attack", 10),
-	stat_defense = SimpleStatPerk("Defense", "defense", 10),
-	stat_magicattack = SimpleStatPerk("Intelligence", "magicattack", 10),
-	stat_magicdefense = SimpleStatPerk("Resistance", "magicdefense", 10),
-	stat_accuracy = SimpleStatPerk("Dexterity", "accuracy", 10),
-	stat_evasion = SimpleStatPerk("Agility", "evasion", 10),
+	stat_hp = SimpleStatPerk{name = "Endurance", stat_id = "maxhp"},
+	stat_attack = SimpleStatPerk{name = "Strength", stat_id = "attack"},
+	stat_defense = SimpleStatPerk{name = "Defense", stat_id = "defense"},
+	stat_magicattack = SimpleStatPerk{name = "Intelligence", stat_id = "magicattack"},
+	stat_magicdefense = SimpleStatPerk{name = "Resistance", stat_id = "magicdefense"},
+	stat_accuracy = SimpleStatPerk{name = "Dexterity", stat_id = "accuracy"},
+	stat_evasion = SimpleStatPerk{name = "Agility", stat_id = "evasion"},
 }
