@@ -1,4 +1,5 @@
 local gamelogic = require "main/gamelogic"
+local content_statuses = require "content/statuses"
 
 local function SimpleStatPerk (data)
 	return {

@@ -1,8 +1,9 @@
+require "main/util"
 local gooey = require "gooey.gooey"
-local gamelogic = require "main/gamelogic"
 local mapper = require "in.mapper"
 local triggers = require "in.triggers"
 local richtext = require "richtext.richtext"
+local gamelogic = require "main/gamelogic"
 local content = {
 	skills = require "content/skills",
 	chars = require "content/chars",
@@ -32,6 +33,15 @@ local gui_colors = {
 		hover = vmath.vector4(.6,1,.6,1),
 	}
 }
+
+local loaded_textures = {}
+local load_texture = function (path)
+	local icon_file = io.open("content/images/" .. path .. ".png", "rb")
+	local rawimg = image.load(icon_file:read("*all"))
+	gui.new_texture(path, rawimg.width, rawimg.height, rawimg.type, rawimg.buffer)
+	loaded_textures[path] = true
+	icon_file.close()
+end
 
 function init(self)
 	gooey.acquire_input()
@@ -106,14 +116,14 @@ function init(self)
 			skill[k] = v
 		end
 		skill.user = user
+		if skill.icon and not loaded_textures[skill.icon] then
+			load_texture(skill.icon)
+		end
 		return skill
 	end
 
 	self.init_player = function (char_id, enemy)
-		local player = {}
-		for k,v in pairs(content.chars[char_id]) do
-			player[k] = v
-		end
+		local player = table.copy(content.chars[char_id])
 		player.hp = player.hpmax
 		player.skills = {}
 		for i,skill_id in ipairs(player.skill_ids or {}) do
@@ -125,6 +135,7 @@ function init(self)
 		else
 			player.enemy = true
 		end
+		player.statuses = {}
 		return player
 	end
 
@@ -141,8 +152,14 @@ function init(self)
 	self.update_skilllist = function (list)
 		for i,item in ipairs(list.items) do
 			local button = item.nodes[hash"skillitem_btn"]
-			if item.data then
+			if item.data and item.data ~= "" then
 				self.richtext_autoscale(item.nodes[hash"skillitem_text"], item.data.name, 0.8, 125)
+				if item.data.icon then
+					gui.set_texture(item.nodes[hash"skillitem_image"], item.data.icon)
+					gui.set_color(item.nodes[hash"skillitem_image"], item.data.iconcolor or vmath.vector4(1))
+				else
+					gui.set_color(item.nodes[hash"skillitem_image"], vmath.vector4(0))
+				end
 				if self.skill_selected == item.data then
 					gui.set_color(button, (self.get_character_controllable() or self.enemy_turn) and gui_colors.skilllist.selected or gui_colors.skilllist.disabled_selected)
 				else
@@ -226,16 +243,30 @@ function init(self)
 		self.skill_targets = {}
 	end
 
-	self.update_charlist_both = function (list)
+	self.update_charlist1 = function (list)
+		self.update_charlist_both(list, 1)
+	end
+
+	self.update_charlist2 = function (list)
+		self.update_charlist_both(list, 2)
+	end
+
+	self.update_charlist_both = function (list, which_list)
 		for i,item in ipairs(list.items) do
-			if item.data then
+			if item.data and item.data ~= "" then
+				gui.set_id(item.nodes[hash"statuslist_container"], "statuslist_container" .. which_list .. "_" .. item.index)
+				gui.set_id(item.nodes[hash"statuslist_stencil"], "statuslist_stencil" .. which_list .. "_" .. item.index)
+				gui.set_id(item.nodes[hash"statusitem"], "statusitem" .. which_list .. "_" .. item.index)
+				gui.set_id(item.nodes[hash"statusitem_image"], "statusitem_image")
 				self.richtext_autoscale(item.nodes[hash"charitem_text"], item.data.name, 1, 200)
 				gui.set_scale(item.nodes[hash"charitem_hpbar"], vmath.vector3(item.data.hp / item.data.hpmax, 1, 1))
 				gui.set_color(item.nodes[hash"charitem_hptext"], vmath.vector3(1,0,0) * item.data.hp / item.data.hpmax)
 				self.richtext_autoscale(item.nodes[hash"charitem_hptext"], "HP: " .. item.data.hp .. "/" .. item.data.hpmax, 0.4, 200)
 				gui.set_texture(item.nodes[hash"charitem_image"], "player")
-				gui.play_flipbook(item.nodes[hash"charitem_image"], item.data.icon)
-				gui.set_color(item.nodes[hash"charitem_image"], item.data.iconcolor)
+				if item.data.icon then
+					gui.play_flipbook(item.nodes[hash"charitem_image"], item.data.icon)
+					gui.set_color(item.nodes[hash"charitem_image"], item.data.iconcolor or vmath.vector4(1))
+				end
 				if self.enemy_turn then
 					if item.data == self.active_character then
 						gui.set_text(item.nodes[hash"charitem_acttext"], "Active")
@@ -261,6 +292,29 @@ function init(self)
 						end
 					end
 				end
+			end
+		end
+		if not self.skill_selected then
+			if list.over_item and list.over_item.data then
+				local data = list.over_item.data
+				self.richtext_autoscale(gui.get_node("tooltip_text"), string.gsub(
+				"{name}\n{hp}/{hpmax} HP{acthint}", "%{(.-)%}", function(s)
+					if s == "acthint" then
+						if data.enemy then
+							return "\n\nEnemy"
+						else
+							if data.actions > 0 then
+								return "\n\nReady to act"
+							else
+								return "\n\nOut of actions"
+							end
+						end
+					end
+					return data[s]
+				end), nil)
+			end
+			if list.out_item_now and list.out_item_now.data then
+				self.richtext_autoscale(gui.get_node("tooltip_text"), "")
 			end
 		end
 	end
@@ -293,6 +347,27 @@ function init(self)
 			end
 		end
 		self:do_gooey()
+	end
+
+	self.update_statuslist = function (list)
+		for i,item in ipairs(list.items) do
+			if item.data and item.data ~= "" then
+				if item.data.icon then
+					if not loaded_textures[item.data.icon] then
+						load_texture(item.data.icon)
+					end
+					gui.set_texture(item.nodes[hash"statusitem_image"], item.data.icon)
+					gui.set_color(item.nodes[hash"statusitem_image"], item.data.iconcolor or vmath.vector4(1))
+				end
+			end
+		end
+		if list.over_item then
+			local data = list.over_item.data
+			self.richtext_autoscale(gui.get_node("tooltip_text"), string.gsub(
+			"{name}\n{desc}", "%{(.-)%}", function(s)
+				return data and data[s]
+			end), nil)
+		end
 	end
 
 	self.highlight_chosen_target = function (nodes, color)
@@ -386,9 +461,16 @@ function init(self)
 	end
 
 	self.do_gooey = function(self, action_id, action) -- run on on_input, but also used to run the update functions again after a selection function during middle of primary call
-		self.char_list1_gui = gooey.dynamic_list("charlist1_bg", "charlist1_stencil", "charitem1_bg", self.char1_list, action_id, action, nil, self.selected_charlist, self.update_charlist_both)
-		self.char_list2_gui = gooey.dynamic_list("charlist2_bg", "charlist2_stencil", "charitem2_bg", self.char2_list, action_id, action, nil, self.selected_charlist, self.update_charlist_both)
-		self.skill_list_gui = gooey.dynamic_list("skilllist_bg", "skilllist_stencil", "skillitem_bg", self.skill_list, action_id, action, nil, self.selected_skilllist, self.update_skilllist)
+		self.char_list1_gui = gooey.dynamic_list("charlist1_bg", "charlist1_stencil", "charitem1_bg", self.char1_list, action_id, action, nil, self.selected_charlist, self.update_charlist1)
+		self.char_list2_gui = gooey.dynamic_list("charlist2_bg", "charlist2_stencil", "charitem2_bg", self.char2_list, action_id, action, nil, self.selected_charlist, self.update_charlist2)
+		for _,char_list in pairs{{self.char_list1_gui, 1}, {self.char_list2_gui, 2}} do
+			for i,char in pairs(char_list[1].items) do
+				if char.data then
+					gooey.dynamic_list("statuslist_container" .. char_list[2] .. "_" .. char.index, "statuslist_stencil" .. char_list[2] .. "_" .. char.index, "statusitem" .. char_list[2] .. "_" .. char.index, char.data.statuses, action_id, action, nil, nil, self.update_statuslist)
+				end
+			end
+		end
+		self.skill_list_gui = gooey.dynamic_list("skilllist_bg", "skilllist_stencil", "skillitem_bg", self.skill_list, action_id, action, nil, self.selected_skilllist, self.update_skilllist, true)
 		gooey.button("confirmbutton", action_id, action, self.press_confirmbutton, self.update_confirmbutton)
 	end
 	
@@ -406,8 +488,8 @@ function init(self)
 		end
 	end
 	gui.set_position(charlist2_gui[hash"charlist1_bg"], vmath.vector3(1027,648,0))
-	gui.set_position(charlist2_gui[hash"charitem_text"], vmath.vector3(-80,35,0))
-	gui.set_position(charlist2_gui[hash"charitem_image"], vmath.vector3(-80,35,0))
+	gui.set_position(charlist2_gui[hash"charitem_text"], vmath.vector3(-80,-22,0))
+	gui.set_position(charlist2_gui[hash"charitem_image"], vmath.vector3(-80,-22,0))
 	gui.set_scale(charlist2_gui[hash"charitem_pointer_tf"], vmath.vector3(-1,1,1))
 	gui.move_above(gui.get_node("tooltip_bg"), gui.get_node("charlist2_bg"))
 

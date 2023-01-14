@@ -1,4 +1,5 @@
 local gamelogic = require "main/gamelogic"
+local content_statuses = require "content/statuses"
 
 local function SimpleAttackSkill (data)
 	local skill = {
@@ -23,23 +24,29 @@ local function SimpleAttackSkill (data)
 end
 
 return {
-	attack = SimpleAttackSkill{name = "Strike", power = 10, variance = 0.1},
+	attack = SimpleAttackSkill{name = "Strike", icon="icons/fist", iconcolor=vmath.vector4(0.5, 0, 0, 1), power = 10, variance = 0.1},
 	defend = {
 		name = "Defend",
-		desc = "Reduce incoming attack damage by 50% this turn.",
+		icon="icons/shield",
+		iconcolor=vmath.vector4(0.0, 0, 0.5, 1),
+		desc = "Double your Defense and Magic Defense this turn.",
 		target = gamelogic.target_funcs[gamelogic.TARGET_SELF],
 		OnUse = function (self, target)
-			
+			table.insert(self.user.statuses, table.copy(content_statuses["defending"]))
 			return string.format("%s defends", self.user.name)
 		end,
 	},
 	skip_turn = {
 		name = "Skip Turn",
+		icon="icons/empty-hourglass",
+		iconcolor=vmath.vector4(0.35, 0.35, 0.2, 1),
 		desc = "Do nothing and end your turn.",
 		target = gamelogic.target_funcs[gamelogic.TARGET_SELF],
 	},
 	heal = {
 		name = "Heal",
+		icon="icons/health-normal",
+		iconcolor=vmath.vector4(0.0, 0.5, 0, 1),
 		desc = "Restore an ally's HP.",
 		target = gamelogic.target_funcs[gamelogic.TARGET_ALLY],
 		power = 2,

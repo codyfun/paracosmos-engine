@@ -13,3 +13,4 @@ This prototype borrows a lot of gameplay elements from [TROUBLESHOOTER: Abandone
 	- Library: [Gooey](https://github.com/britzl/gooey) [(MIT License)](https://github.com/britzl/gooey/blob/master/LICENSE.md)
 	- Library: [Defold-RichText](https://github.com/britzl/defold-richtext) [(MIT License)](https://github.com/britzl/defold-richtext/blob/master/LICENSE.md)
 - Library: [rotLove](https://github.com/paulofmandown/rotLove) [(MIT License)](https://github.com/paulofmandown/rotLove/blob/master/LICENSE.txt)
+- Art: [Game-icons.net](https://game-icons.net/) [(CC BY 3.0 License)](https://creativecommons.org/licenses/by/3.0/)
