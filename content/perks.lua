@@ -2,8 +2,7 @@ local gamelogic = require "main/gamelogic"
 local content_statuses = require "content/statuses"
 
 local function SimpleStatPerk (data)
-	return {
-		name = dataname,
+	return table.merge(data, {
 		OnEquip = function (self, user)
 			self.stat_mod = {Apply = function(self,value) return value + 10 end}
 			user[data.stat_id]:AddMod(self.stat_mod)
@@ -11,7 +10,7 @@ local function SimpleStatPerk (data)
 		OnUnequip = function (self, user)
 			user[data.stat_id]:RemoveMod(self.stat_mod)
 		end,
-	}
+	})
 end
 
 return {

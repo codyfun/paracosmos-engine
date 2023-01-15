@@ -3,7 +3,7 @@ local gamelogic = require "main/gamelogic"
 return {
 	hero = {
 		name = "Hero",
-		icon = "human",
+		icon = "portraits/human64",
 		iconcolor = vmath.vector4(.0, .6, .6, 1),
 		hpmax = 125,
 		attack = 30,
@@ -16,7 +16,7 @@ return {
 	},
 	uncle = {
 		name = "Uncle",
-		icon = "dog",
+		icon = "portraits/dog64",
 		iconcolor = vmath.vector4(.6, .4, .0, 1),
 		hpmax = 80,
 		attack = 35,
@@ -29,7 +29,7 @@ return {
 	},
 	bun = {
 		name = "Bun",
-		icon = "rabbit",
+		icon = "portraits/rabbit64",
 		iconcolor = vmath.vector4(.7, .7, .2, 1),
 		hpmax = 50,
 		attack = 25,
