@@ -88,10 +88,11 @@ function RNG:getUniformInt(lowerBound, upperBound)
 end
 
 function RNG:getNormal(mean, stddev)
+    local u,v,r
     repeat
-        local u = 2*self:getUniform()-1
-        local v = 2*self:getUniform()-1
-        local r = u*u + v*v
+        u = 2*self:getUniform()-1
+        v = 2*self:getUniform()-1
+        r = u*u + v*v
     until r > 1 or r == 0
 
     local gauss = u * math.sqrt(-2*math.log(r)/r)

@@ -39,7 +39,7 @@ end
 
 function ModStat:StaleValue()
 	self.cached_value = nil
-	if self.OnStaleValue then self:OnStaleValue(value) end
+	if self.OnStaleValue then self:OnStaleValue() end
 end
 
 local ModStat_class = {

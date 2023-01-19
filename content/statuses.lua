@@ -1,8 +1,6 @@
-local gamelogic = require "main/gamelogic"
-
 local function SimpleStatBoost (data)
 	return table.merge(data, {
-		desc = data.name,
+		desc = "",
 		stacks = 3,
 		OnApply = function (self)
 			self.stat_mod = {Apply = function(self,value) return math.floor(value * 1.334 + 0.5) end}
@@ -20,7 +18,7 @@ local function SimpleStatBoost (data)
 	})
 end
 
-return {
+local statuses = {
 	defending = {
 		name = "Defending",
 		icon="icons/shield",
@@ -46,3 +44,7 @@ return {
 	buffed_accuracy = SimpleStatBoost{name = "Accuracy Up", stat_id = "accuracy"},
 	buffed_evasion = SimpleStatBoost{name = "Evasion Up", stat_id = "evasion"},
 }
+for k,v in pairs(statuses) do
+	v.id = k
+end
+return statuses

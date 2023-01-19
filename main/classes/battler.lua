@@ -1,25 +1,24 @@
-local ModStat = require "main/modstat"
-local content_chars = require "content/chars"
-local content_skills = require "content/skills"
-
 local init_skill = function (user, skill_id)
-	local skill = {}
-	for k,v in pairs(content_skills[skill_id]) do
-		skill[k] = v
-	end
+	local skill = table.copy(content.skills[skill_id])
 	skill.user = user
 	return skill
 end
 
-Battler = {}
+local Battler = {}
 
 function Battler:AddStatus(status)
+	if type(status) == "string" then
+		status = table.copy(content.statuses[status])
+	end
 	status.user = self
 	if status.OnApply then status:OnApply() end
 	table.insert(self.statuses, status)
 end
 
 function Battler:RemoveStatus(status)
+	if type(status) == "string" then
+		status = self.statuses[table.find_if(self.statuses, function(status_object) return status_object.id == status end)]
+	end
 	if status.OnRemove then status:OnRemove() end
 	table.remove(self.statuses, table.find(self.statuses, status))
 end
@@ -50,7 +49,7 @@ local Battler_class = {
 
 setmetatable(Battler_class, {
 	__call = function(self, def, enemy)
-		local object = table.copy(content_chars[def])
+		local object = table.copy(content.chars[def])
 		setmetatable(object, self)
 		Battler_data[object] = {}
 		for _,stat in pairs{"hpmax", "attack", "defense", "magicattack", "magicdefense", "accuracy", "evasion"} do

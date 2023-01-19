@@ -1,7 +1,7 @@
 return function()
 	context("ModStats", function()
 		test("ModStat basic mod arithmetic", function()
-			local ModStat = require("main.modstat")
+			local ModStat = require("main/modstat")
 
 			local number_stat = ModStat(1)
 
@@ -25,7 +25,7 @@ return function()
 		end)
 
 		test("ModStat mod order", function()
-			local ModStat = require("main.modstat")
+			local ModStat = require("main/modstat")
 			
 			local text_stat = ModStat("a")
 
@@ -38,7 +38,7 @@ return function()
 		end)
 
 		test("ModStat cached values", function()
-			local ModStat = require("main.modstat")
+			local ModStat = require("main/modstat")
 			
 			local number_stat = ModStat(1)
 

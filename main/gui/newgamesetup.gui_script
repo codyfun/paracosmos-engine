@@ -1,0 +1,3 @@
+function init(self)
+    gooey.acquire_input()
+end

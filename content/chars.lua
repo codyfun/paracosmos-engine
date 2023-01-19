@@ -1,6 +1,4 @@
-local gamelogic = require "main/gamelogic"
-
-return {
+local chars = {
 	hero = {
 		name = "Hero",
 		icon = "portraits/human64",
@@ -12,7 +10,7 @@ return {
 		magicdefense = 30,
 		accuracy = 35,
 		evasion = 30,
-		skill_ids = {"attack", "heal"}
+        skill_ids = {"attack", "heal"},
 	},
 	uncle = {
 		name = "Uncle",
@@ -25,7 +23,7 @@ return {
 		magicdefense = 25,
 		accuracy = 35,
 		evasion = 35,
-		skill_ids = {"attack", "buff_attack"}
+		skill_ids = {"attack", "buff_attack"},
 	},
 	bun = {
 		name = "Bun",
@@ -41,3 +39,7 @@ return {
 		skill_ids = {"attack"}
 	}
 }
+for k,v in pairs(chars) do
+	v.id = k
+end
+return chars

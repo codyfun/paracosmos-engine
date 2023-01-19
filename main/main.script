@@ -1,0 +1,102 @@
+require "main/util"
+require "main/gamelogic"
+gooey = require "gooey.gooey"
+mapper = require "in.mapper"
+triggers = require "in.triggers"
+richtext = require "richtext.richtext"
+monarch = require "monarch.monarch"
+
+ModStat = require "main/modstat"
+
+Player = require "main/classes/player"
+Battler = require "main/classes/battler"
+
+content = {
+	skills = require "content/skills",
+	chars = require "content/chars",
+	statuses = require "content/statuses",
+	perks = require "content/perks"
+}
+
+RNG = {}
+
+load_texture = function(self, path)
+	if not self.loaded_textures then self.loaded_textures = {} end
+	if not self.loaded_textures[path] then
+        local icon_file = io.open("content/images/" .. path .. ".png", "rb")
+		if icon_file then
+			local rawimg = image.load(icon_file:read("*all"))
+			gui.new_texture(path, rawimg.width, rawimg.height, rawimg.type, rawimg.buffer)
+			self.loaded_textures[path] = true
+            icon_file.close()
+		end
+	end
+end
+
+richtext_autoscale = function (self, node, text, base_scale, base_width)
+	if not self.rich_text_nodes then self.rich_text_nodes = {} end
+	for i,old_data in pairs(self.rich_text_nodes) do
+		if old_data[1] == node then
+			richtext.remove(old_data[2])
+			table.remove(self.rich_text_nodes, i)
+			if old_data[4].valign == richtext.VALIGN_BOTTOM then
+				gui.set_position(node, gui.get_position(node) - vmath.vector3(0,old_data[3].height*gui.get_scale(node).y,0))
+			end
+			break
+		end
+	end
+	if text == "" then return end
+	local settings = {
+		parent = node,
+		color = gui.get_color(node),
+		align = ({
+			[gui.PIVOT_N] = richtext.ALIGN_CENTER,
+			[gui.PIVOT_CENTER] = richtext.ALIGN_CENTER,
+			[gui.PIVOT_S] = richtext.ALIGN_CENTER,
+			[gui.PIVOT_E] = richtext.ALIGN_RIGHT,
+		})[gui.get_pivot(node)],
+		valign = ({
+			[gui.PIVOT_W] = richtext.VALIGN_MIDDLE,
+			[gui.PIVOT_CENTER] = richtext.VALIGN_MIDDLE,
+			[gui.PIVOT_E] = richtext.VALIGN_MIDDLE,
+			[gui.PIVOT_SW] = richtext.VALIGN_BOTTOM,
+		})[gui.get_pivot(node)],
+		combine_words = true,
+	}
+	if base_scale then
+		settings.line_spacing = 0
+	else
+		settings.width = gui.get_size(node).x
+	end
+	local output, metrics = richtext.create(text, "main", settings)
+	table.insert(self.rich_text_nodes, {node, output, metrics, settings})
+	if base_scale then
+		if metrics.width > base_width then
+			gui.set_scale(node, base_width/metrics.width*vmath.vector3(base_scale))
+		else
+			gui.set_scale(node, vmath.vector3(base_scale))
+		end
+	end
+	if settings.valign == richtext.VALIGN_BOTTOM then
+		gui.set_position(node, gui.get_position(node) + vmath.vector3(0,metrics.height*gui.get_scale(node).y,0))
+	end
+end
+
+function init(self)
+	mapper.bind(triggers.KEY_SPACE, "confirm", 1)
+	mapper.bind(triggers.KEY_ENTER, "confirm", 1)
+	mapper.bind(triggers.KEY_ESC, "cancel", 1)
+	mapper.bind(triggers.MOUSE_BUTTON_RIGHT, "cancel", 1)
+	
+	msg.post("#", "init_end")
+end
+
+function on_message(self, message_id, message, sender)
+	if message_id == hash"init_end" then
+		monarch.show(hash"mainmenu")
+	elseif message_id == hash"new_game" then
+		monarch.show(hash"loadouteditor")
+	elseif message_id == hash"load_game" then
+		
+	end
+end

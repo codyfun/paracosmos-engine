@@ -1,0 +1,332 @@
+local gui_colors = {
+    perklist = {
+        normal = vmath.vector4(.9,.9,1,1),
+        hover = vmath.vector4(.80,.80,.95,1),
+        selected = vmath.vector4(.65,.65,.9,1),
+    },
+    charlist = {
+        normal = vmath.vector4(1,.90,.80,1),
+        disabled = vmath.vector4(.8,.80,.80,1),
+        selected = vmath.vector4(.8, .95, .85, 1),
+        highlight_lvl = vmath.vector4(0, .7, .8, 1),
+    },
+	equipbutton = {
+		normal = vmath.vector4(.8,1,.8,1),
+		hover = vmath.vector4(.6,1,.6,1),
+	},
+	unequipbutton = {
+		normal = vmath.vector4(1,.8,.8,1),
+		hover = vmath.vector4(1,.6,.6,1),
+	},
+	fightbutton = {
+		normal = vmath.vector4(1,.8,.7,1),
+		hover = vmath.vector4(1,.6,.4,1),
+	}
+}
+
+function init(self)
+    gooey.acquire_input()
+
+    self.perk_list = {}
+    self.storeperk_list = {}
+    self.char_list = {}
+
+    function self.update_perklist(list)
+        for i, item in ipairs(list.items) do
+            local button = item.nodes[hash "perkitem_btn"]
+            if item.data and item.data ~= "" then
+                richtext_autoscale(self, item.nodes[hash "perkitem_text"], item.data.name, 0.8, 125)
+                if item.data.icon then
+                    load_texture(self, item.data.icon)
+                    gui.set_texture(item.nodes[hash "perkitem_image"], item.data.icon)
+                    gui.set_color(item.nodes[hash "perkitem_image"], item.data.iconcolor or vmath.vector4(1))
+                else
+                    gui.set_color(item.nodes[hash "perkitem_image"], vmath.vector4(0))
+                end
+                if self.perk_selected == item.data then
+                    gui.set_color(button, gui_colors.perklist.selected )
+                else
+                    gui.set_color(button, gui_colors.perklist.normal)
+                end
+            end
+        end
+        if list.over_item and list.over_item.data then
+            local over_button = list.over_item.nodes[hash "perkitem_btn"]
+            if self.perk_button_selected ~= over_button then
+                gui.set_color(over_button,gui_colors.perklist.hover)
+            end
+            if not (self.perk_selected or self.storeperk_selected) and list.over_item.data then
+                richtext_autoscale(self, gui.get_node("tooltip_text"), list.over_item.data.desc)
+            end
+        end
+        if list.out_item_now and not (self.perk_selected or self.storeperk_selected) then
+            richtext_autoscale(self, gui.get_node("tooltip_text"), "")
+        end
+        if list.scrolling and self.perk_list_scrollbar then
+            self.perk_list_scrollbar.scroll_to(0, list.scroll.y)
+        end
+    end
+
+    function self.selected_perklist(list)
+        if not list.selected_item.data then return end
+        local button = list.selected_item.nodes[hash "perkitem_btn"]
+        if self.perk_button_selected or self.storeperk_button_selected then
+            if self.perk_button_selected ~= button then --deselect previous perk when clicking new one
+                sound.play("/sound#click")
+                self.deselect_perk(self.perk_button_selected)
+            else --click on selected perk to deselect
+                sound.play("/sound#woosh")
+                self.deselect_perk(self.perk_button_selected)
+                return --do not fallthrough to selection
+            end
+        else
+            sound.play("/sound#click")
+        end
+        self.perk_button_selected = button
+        self.perk_selected = list.selected_item.data
+        richtext_autoscale(self, gui.get_node("tooltip_text"), list.selected_item.data.desc)
+        self:do_gooey()
+    end
+
+    function self.scrolled_perk (scrollbar)
+        self.perk_list_gui.scroll_to(scrollbar.scroll.x, scrollbar.scroll.y)
+    end
+
+    self.deselect_perk = function(button)
+        if self.perk_button_selected then
+            gui.set_color(self.perk_button_selected, (button == self.perk_button_selected) and gui_colors.perklist.hover or gui_colors.perklist.normal)
+        end
+        if self.storeperk_button_selected then
+            gui.set_color(self.storeperk_button_selected, (button == self.storeperk_button_selected) and gui_colors.perklist.hover or gui_colors.perklist.normal)
+        end
+        if not button then
+            richtext_autoscale(self, gui.get_node("tooltip_text"), "")
+        end
+        self.perk_button_selected = nil
+        self.perk_selected = nil
+        self.storeperk_button_selected = nil
+        self.storeperk_selected = nil
+    end
+    
+    function self.update_storeperklist(list)
+        for i, item in ipairs(list.items) do
+            local button = item.nodes[hash "storeperkitem_btn"]
+            if item.data and item.data ~= "" then
+                richtext_autoscale(self, item.nodes[hash "storeperkitem_text"], item.data.name, 0.8, 125)
+                if item.data.icon then
+                    load_texture(self, item.data.icon)
+                    gui.set_texture(item.nodes[hash "storeperkitem_image"], item.data.icon)
+                    gui.set_color(item.nodes[hash "storeperkitem_image"], item.data.iconcolor or vmath.vector4(1))
+                else
+                    gui.set_color(item.nodes[hash "storeperkitem_image"], vmath.vector4(0))
+                end
+                if self.storeperk_selected == item.data then
+                    gui.set_color(button, gui_colors.perklist.selected)
+                else
+                    gui.set_color(button, gui_colors.perklist.normal)
+                end
+            end
+        end
+        if list.over_item and list.over_item.data then
+            local over_button = list.over_item.nodes[hash "storeperkitem_btn"]
+            if self.storeperk_button_selected ~= over_button then
+                gui.set_color(over_button, gui_colors.perklist.hover)
+            end
+            if not (self.perk_selected or self.storeperk_selected) and list.over_item.data then
+                richtext_autoscale(self, gui.get_node("tooltip_text"), list.over_item.data.desc)
+            end
+        end
+        if list.out_item_now and not (self.perk_selected or self.storeperk_selected) then
+            richtext_autoscale(self, gui.get_node("tooltip_text"), "")
+        end
+        if list.scrolling and self.perk_list_scrollbar then
+            self.perk_list_scrollbar.scroll_to(0, list.scroll.y)
+        end
+    end
+
+    function self.selected_storeperklist(list)
+        if not list.selected_item.data then return end
+        local button = list.selected_item.nodes[hash "storeperkitem_btn"]
+        if self.perk_button_selected or self.storeperk_button_selected then
+            if self.storeperk_button_selected ~= button then --deselect previous perk when clicking new one
+                sound.play("/sound#click")
+                self.deselect_perk(self.storeperk_button_selected)
+            else --click on selected perk to deselect
+                sound.play("/sound#woosh")
+                self.deselect_perk(self.storeperk_button_selected)
+                return --do not fallthrough to selection
+            end
+        else
+            sound.play("/sound#click")
+        end
+        self.storeperk_button_selected = button
+        self.storeperk_selected = list.selected_item.data
+        richtext_autoscale(self, gui.get_node("tooltip_text"), list.selected_item.data.desc)
+        self:do_gooey()
+    end
+
+    function self.scrolled_storeperk(scrollbar)
+        self.perk_list_gui.scroll_to(scrollbar.scroll.x, scrollbar.scroll.y)
+    end
+
+    function self.update_charlist (list)
+        for i,item in ipairs(list.items) do
+            if item.data and item.data ~= "" then
+                gui.set_color(item.nodes[hash"charitem_btn"], (self.selected_char and self.selected_char[1] == item.data) and gui_colors.charlist.selected or gui_colors.charlist.normal)
+                richtext_autoscale(self, item.nodes[hash"charitem_text"], item.data.name, 1, 200)
+				gui.set_color(item.nodes[hash"charitem_lvltext"], vmath.vector3(0,0,0,1) and gui_colors.charlist.highlight_lvl)
+                richtext_autoscale(self, item.nodes[hash "charitem_lvltext"], "Level: " .. 0 .. "/" .. item.data.level, 1, 220)
+                if item.data.icon then
+                    load_texture(self, item.data.icon)
+                    gui.set_texture(item.nodes[hash"charitem_image"], item.data.icon)
+                    gui.set_color(item.nodes[hash"charitem_image"], item.data.iconcolor or vmath.vector4(1))
+                else
+                    gui.set_color(item.nodes[hash"charitem_image"], vmath.vector4(0))
+                end
+            end
+        end
+        if list.scrolling and self.char_list_scrollbar then
+            self.char_list_scrollbar.scroll_to(0, list.scroll.y)
+        end
+        if self.selected_char then
+            richtext_autoscale(self, gui.get_node("statsheet_text"), string.gsub(
+                "{name}\n<color=red>Max HP: {hpmax}</color>\n<color=red>Atk: {attack}  </color><color=purple>Mat: {magicattack}  </color><color=brown>Acc: {accuracy}</color>\n<color=teal><color=blue>Def: {defense}  </color>Mdf: {magicdefense}  </color><color=green>Eva: {evasion}</color>"
+                , "%{(.-)%}", function(s)
+                return (type(self.selected_char[1][s]) == "table") and self.selected_char[1][s].GetValue and self.selected_char[1][s]:GetValue() or self.selected_char[1][s]
+            end), nil) --nil blocks second output from gsub
+        end
+    end
+
+    function self.selected_charlist(list)
+        if not list.selected_item.data then return end
+        if self.selected_char[1] ~= list.selected_item.data then
+            sound.play("/sound#click")
+            self.set_selected_char({list.selected_item.data, list.selected_item.nodes})
+        end
+    end
+
+    function self.scrolled_char (scrollbar)
+        self.char_list_gui.scroll_to(scrollbar.scroll.x, scrollbar.scroll.y)
+    end
+
+    function self.set_selected_char(char)
+        if self.selected_char then
+            gui.set_visible(self.selected_char[2][hash "charitem_pointer"], false)
+        end
+        self.selected_char = char
+        richtext_autoscale(self, gui.get_node("perklist_title"), string.format("%s's perks", char[1].name), 0.8, 175)
+        gui.set_visible(char[2][hash "charitem_pointer"], true)
+        self.perk_list = char[1].perks
+        self:do_gooey()
+    end
+
+    function self.update_equipbutton (button)
+        if button.over_now then
+            gui.set_color(button.node, gui_colors.equipbutton.hover)
+        end
+        if button.out_now then
+            gui.set_color(button.node, gui_colors.equipbutton.normal)
+        end
+        if self.storeperk_selected then
+            gui.set_alpha(button.node, 1)
+        else
+            gui.set_alpha(button.node, 0)
+        end
+    end
+
+    function self.press_equipbutton (button)
+        if self.storeperk_selected then
+            local perk = self.storeperk_selected
+            self.selected_char[1]:AddPerk(perk)
+            self.deselect_perk()
+            table.remove_value(self.storeperk_list, perk)
+            self:do_gooey()
+        end
+    end
+
+    function self.update_unequipbutton(button)
+        if button.over_now then
+            gui.set_color(button.node, gui_colors.unequipbutton.hover)
+        end
+        if button.out_now then
+            gui.set_color(button.node, gui_colors.unequipbutton.normal)
+        end
+        if self.perk_selected then
+            gui.set_alpha(button.node, 1)
+        else
+            gui.set_alpha(button.node, 0)
+        end
+    end
+
+    function self.press_unequipbutton(button)
+        if self.perk_selected then
+            local perk = self.perk_selected
+            self.selected_char[1]:RemovePerk(perk)
+            self.deselect_perk()
+            table.insert(self.storeperk_list, perk)
+            self:do_gooey()
+        end
+    end
+
+    function self.update_fightbutton (button)
+        if button.over_now then
+            gui.set_color(button.node, gui_colors.fightbutton.hover)
+        end
+        if button.out_now then
+            gui.set_color(button.node, gui_colors.fightbutton.normal)
+        end
+    end
+
+    function self.press_fightbutton(button)
+        sound.play("/sound#click")
+        monarch.show(hash"battle")
+    end
+
+    function self.do_gooey (self, action_id, action)
+        self.perk_list_gui = gooey.dynamic_list("perklist_bg", "perklist_stencil", "perkitem_bg", self.perk_list, action_id, action, nil, self.selected_perklist, self.update_perklist)
+        self.storeperk_list_gui = gooey.dynamic_list("storeperklist_bg", "storeperklist_stencil", "storeperkitem_bg", self.storeperk_list, action_id, action, nil, self.selected_storeperklist, self.update_storeperklist)
+        self.char_list_gui = gooey.dynamic_list("charlist_bg", "charlist_stencil", "charitem_bg", self.char_list, action_id, action, nil, self.selected_charlist, self.update_charlist)
+        gui.set_alpha(gui.get_node("charscroll_bg"), 0)
+        if self.perk_list_gui.data_size > 15 then
+            gui.set_alpha(gui.get_node("perkscroll_bg"), 1)
+            gui.set_size(gui.get_node("perkscroll_handle"), vmath.vector3(14, 648 * 15 / self.perk_list_gui.data_size, 0))
+            self.perk_list_scrollbar = gooey.vertical_scrollbar("perkscroll_handle", "perkscroll_bg", action_id, action, self.scrolled_perk)
+        else
+            gui.set_alpha(gui.get_node("perkscroll_bg"), 0)
+        end
+        if self.storeperk_list_gui.data_size > 15 then
+            gui.set_alpha(gui.get_node("storeperkscroll_bg"), 1)
+            gui.set_size(gui.get_node("storeperkscroll_handle"), vmath.vector3(14, 648 * 15 / self.storeperk_list_gui.data_size, 0))
+            self.storeperk_list_scrollbar = gooey.vertical_scrollbar("storeperkscroll_handle", "storeperkscroll_bg", action_id, action, self.scrolled_perk)
+        else
+            gui.set_alpha(gui.get_node("storeperkscroll_bg"), 0)
+        end
+        if self.char_list_gui.data_size > 5 then
+            gui.set_alpha(gui.get_node("charscroll_bg"), 1)
+            gui.set_size(gui.get_node("charscroll_handle"), vmath.vector3(18, 648 * 5 / self.char_list_gui.data_size, 0))
+            self.char_list_scrollbar = gooey.vertical_scrollbar("charscroll_handle", "charscroll_bg", action_id, action, self.scrolled_char)
+        else
+            gui.set_alpha(gui.get_node("charscroll_bg"), 0)
+        end
+        gooey.button("equipbutton", action_id, action, self.press_equipbutton, self.update_equipbutton)
+        gooey.button("unequipbutton", action_id, action, self.press_unequipbutton, self.update_unequipbutton)
+        gooey.button("fightbutton", action_id, action, self.press_fightbutton, self.update_fightbutton)
+    end
+
+    table.insert(self.char_list, Player("hero"))
+    table.insert(self.char_list, Player("uncle"))
+    table.insert(self.storeperk_list, table.copy(content.perks["stat_hp"]))
+    table.insert(self.storeperk_list, table.copy(content.perks["stat_attack"]))
+    table.insert(self.storeperk_list, table.copy(content.perks["stat_defense"]))
+    table.insert(self.storeperk_list, table.copy(content.perks["stat_magicattack"]))
+    table.insert(self.storeperk_list, table.copy(content.perks["stat_magicdefense"]))
+    
+    self:do_gooey()
+    
+    self.set_selected_char({self.char_list[1], self.char_list_gui.items[1].nodes})
+end
+
+
+function on_input(self, action_id, action)
+    self:do_gooey(action_id, action)
+end
