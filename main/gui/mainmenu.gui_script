@@ -1,11 +1,6 @@
 function init(self)
     gooey.acquire_input()
 
-    self.can_load = false
-    if self.can_load then
-        gui.set_alpha(gui.get_node("loadgamebutton"), 1)
-    end
-
     self.can_quit = (sys.get_sys_info().system_name ~= "HTML5")
     if self.can_quit then
         gui.set_alpha(gui.get_node("quitbutton"), 1)
@@ -42,7 +37,6 @@ function init(self)
     end
 end
 
-
 function on_input(self, action_id, action)
     gooey.button("newgamebutton", action_id, action, self.pressed_newgame, self.update_button)
     if self.can_load then
@@ -50,5 +44,12 @@ function on_input(self, action_id, action)
     end
     if self.can_quit then
         gooey.button("quitbutton", action_id, action, self.pressed_quit, self.update_button)
+    end
+end
+
+function on_message(self, message_id, message)
+    if message_id == hash "can_load" then
+        self.can_load = true
+        gui.set_alpha(gui.get_node("loadgamebutton"), 1)
     end
 end

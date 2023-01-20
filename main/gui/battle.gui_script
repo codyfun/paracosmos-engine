@@ -1,26 +1,26 @@
 local gui_colors = {
 	skilllist = {
-		normal = vmath.vector4(.9,.9,1,1),
-		hover = vmath.vector4(.80,.80,.95,1),
-		selected = vmath.vector4(.65,.65,.9,1),
-		disabled = vmath.vector4(.9,.9,.9,1),
-		disabled_hover = vmath.vector4(.85,.85,.85,1),
-		disabled_selected = vmath.vector4(.8,.8,.8,1),
+		normal = vmath.vector4(.9, .9, 1, 1),
+		hover = vmath.vector4(.80, .80, .95, 1),
+		selected = vmath.vector4(.65, .65, .9, 1),
+		disabled = vmath.vector4(.9, .9, .9, 1),
+		disabled_hover = vmath.vector4(.85, .85, .85, 1),
+		disabled_selected = vmath.vector4(.8, .8, .8, 1),
 	},
 	charlist = {
-		normal = vmath.vector4(1,.90,.80,1),
-		disabled = vmath.vector4(.8,.80,.80,1),
-		highlight_foe = vmath.vector4(1,.75,.6,1),
-		highlight_ally = vmath.vector4(.8,.95,.85,1),
+		normal = vmath.vector4(1, .90, .80, 1),
+		disabled = vmath.vector4(.8, .80, .80, 1),
+		highlight_foe = vmath.vector4(1, .75, .6, 1),
+		highlight_ally = vmath.vector4(.8, .95, .85, 1),
 		acttext = {
-			active = vmath.vector4(0,.6,0,1),
-			ready = vmath.vector4(.1,.1,.6,1),
-			viewing = vmath.vector4(.4,.4,.4,1),
+			active = vmath.vector4(0, .6, 0, 1),
+			ready = vmath.vector4(.1, .1, .6, 1),
+			viewing = vmath.vector4(.4, .4, .4, 1),
 		},
 	},
 	confirmbutton = {
-		normal = vmath.vector4(.8,1,.8,1),
-		hover = vmath.vector4(.6,1,.6,1),
+		normal = vmath.vector4(.8, 1, .8, 1),
+		hover = vmath.vector4(.6, 1, .6, 1),
 	}
 }
 local enemy_move_preview_time = 1.7
@@ -35,32 +35,33 @@ function init(self)
 	self.turn_count = 0
 	self.enemy_turn = false
 	self.enemy_timer = math.huge
-	self.logtext = ""
+    self.logtext = ""
+	self.rewardpool = {xp = 0, drops = {}}
 	RNG.battle = require "main/rng"
 	RNG.battle:init()
 
-	self.write_log = function (text)
+	self.write_log = function(text)
 		self.logtext = self.logtext .. "\n" .. text
 		richtext_autoscale(self, gui.get_node("log_text"), self.logtext)
 	end
 
-	self.get_character_controllable = function (char, enemy)
+	self.get_character_controllable = function(char, enemy)
 		if self.battle_ended then return false end
 		char = char or self.active_character
 		return (char.enemy == enemy) and (char.actions > 0) and (char.hp > 0)
 	end
 
-	self.update_skilllist = function (list)
-		for i,item in ipairs(list.items) do
-			local button = item.nodes[hash"skillitem_btn"]
+	self.update_skilllist = function(list)
+		for i, item in ipairs(list.items) do
+			local button = item.nodes[hash "skillitem_btn"]
 			if item.data and item.data ~= "" then
-				richtext_autoscale(self, item.nodes[hash"skillitem_text"], item.data.name, 0.8, 125)
+				richtext_autoscale(self, item.nodes[hash "skillitem_text"], item.data.name, 0.8, 125)
 				if item.data.icon then
 					load_texture(self, item.data.icon)
-					gui.set_texture(item.nodes[hash"skillitem_image"], item.data.icon)
-					gui.set_color(item.nodes[hash"skillitem_image"], item.data.iconcolor or vmath.vector4(1))
+					gui.set_texture(item.nodes[hash "skillitem_image"], item.data.icon)
+					gui.set_color(item.nodes[hash "skillitem_image"], item.data.iconcolor or vmath.vector4(1))
 				else
-					gui.set_color(item.nodes[hash"skillitem_image"], vmath.vector4(0))
+					gui.set_color(item.nodes[hash "skillitem_image"], vmath.vector4(0))
 				end
 				if self.skill_selected == item.data then
 					gui.set_color(button, (self.get_character_controllable() or self.enemy_turn) and gui_colors.skilllist.selected or gui_colors.skilllist.disabled_selected)
@@ -70,7 +71,7 @@ function init(self)
 			end
 		end
 		if list.over_item and list.over_item.data then
-			local over_button = list.over_item.nodes[hash"skillitem_btn"]
+			local over_button = list.over_item.nodes[hash "skillitem_btn"]
 			if self.skill_button_selected ~= over_button then
 				gui.set_color(over_button, self.get_character_controllable() and gui_colors.skilllist.hover or gui_colors.skilllist.disabled_hover)
 			end
@@ -83,16 +84,16 @@ function init(self)
 		end
 		if list.scrolling and self.skill_list_scrollbar then
 			self.skill_list_scrollbar.scroll_to(0, list.scroll.y)
-        end
+		end
 	end
 
-	self.selected_skilllist = function (list)
+	self.selected_skilllist = function(list)
 		if not list.selected_item.data then return end
-		local button = list.selected_item.nodes[hash"skillitem_btn"]
+		local button = list.selected_item.nodes[hash "skillitem_btn"]
 		if self.skill_button_selected then
 			if self.skill_button_selected ~= button then --deselect previous skill when clicking new one
 				sound.play("/sound#click")
-				for data,nodes in pairs(self.skill_targets) do
+				for data, nodes in pairs(self.skill_targets) do
 					self.unhighlight_target(nodes)
 				end
 				self.skill_targets = {}
@@ -113,8 +114,8 @@ function init(self)
 		if self.get_character_controllable() then
 			gui.set_alpha(gui.get_node("confirmbutton"), 1)
 			if data.target then
-				for _,char_list in pairs{self.char_list1_gui, self.char_list2_gui} do
-					for i,char in pairs(char_list.items) do
+				for _, char_list in pairs {self.char_list1_gui, self.char_list2_gui} do
+					for i, char in pairs(char_list.items) do
 						if char.data and data.target(self.active_character, char.data) then
 							self.skill_targets[char.data] = char.nodes
 							local color = (self.active_character.enemy == char.data.enemy) and gui_colors.charlist.highlight_ally or gui_colors.charlist.highlight_foe
@@ -136,79 +137,81 @@ function init(self)
 		self:do_gooey()
 	end
 
-	self.scrolled_skill = function (scrollbar)
+	self.scrolled_skill = function(scrollbar)
 		self.skill_list_gui.scroll_to(scrollbar.scroll.x, scrollbar.scroll.y)
 	end
 
-	self.deselect_skill = function (button)
+	self.deselect_skill = function(button)
 		gui.set_color(button or self.skill_button_selected, button and gui_colors.skilllist.hover or gui_colors.skilllist.normal) --interface hack. pass button if over, don't if on confirm instead
 		if not button then
 			richtext_autoscale(self, gui.get_node("tooltip_text"), "")
 		end
 		self.skill_button_selected = nil
 		self.skill_selected = nil
-		self.selected_target = nil
-		gui.set_alpha(gui.get_node("confirmbutton"), 0)
-		for data,nodes in pairs(self.skill_targets) do
+        self.selected_target = nil
+		if not self.battle_ended then
+			gui.set_alpha(gui.get_node("confirmbutton"), 0)
+		end
+		for data, nodes in pairs(self.skill_targets) do
 			self.unhighlight_target(nodes)
 		end
 		self.skill_targets = {}
 	end
 
-	self.update_charlist1 = function (list)
+	self.update_charlist1 = function(list)
 		self.update_charlist_both(list, 1)
 	end
 
-	self.update_charlist2 = function (list)
+	self.update_charlist2 = function(list)
 		self.update_charlist_both(list, 2)
 	end
 
-	self.update_charlist_both = function (list, which_list)
-		for i,item in ipairs(list.items) do
+	self.update_charlist_both = function(list, which_list)
+		for i, item in ipairs(list.items) do
 			if item.data and item.data ~= "" then
-				gui.set_id(item.nodes[hash"statuslist_container"], "statuslist_container" .. which_list .. "_" .. item.index)
-				gui.set_id(item.nodes[hash"statuslist_stencil"], "statuslist_stencil" .. which_list .. "_" .. item.index)
-				gui.set_id(item.nodes[hash"statusitem"], "statusitem" .. which_list .. "_" .. item.index)
-				gui.set_id(item.nodes[hash"statusitem_image"], "statusitem_image")
-				gui.set_id(item.nodes[hash"statusitem_counter"], "statusitem_counter")
+				gui.set_id(item.nodes[hash "statuslist_container"], "statuslist_container" .. which_list .. "_" .. item.index)
+				gui.set_id(item.nodes[hash "statuslist_stencil"], "statuslist_stencil" .. which_list .. "_" .. item.index)
+				gui.set_id(item.nodes[hash "statusitem"], "statusitem" .. which_list .. "_" .. item.index)
+				gui.set_id(item.nodes[hash "statusitem_image"], "statusitem_image")
+				gui.set_id(item.nodes[hash "statusitem_counter"], "statusitem_counter")
 				if not self.selected_target or item.data ~= self.selected_target[1] then
-					gui.set_color(item.nodes[hash"charitem_btn"], item.data.hp > 0 and gui_colors.charlist.normal or gui_colors.charlist.disabled)
+					gui.set_color(item.nodes[hash "charitem_btn"], item.data.hp > 0 and gui_colors.charlist.normal or gui_colors.charlist.disabled)
 				end
-				richtext_autoscale(self, item.nodes[hash"charitem_text"], item.data.name, 1, 200)
-				gui.set_scale(item.nodes[hash"charitem_hpbar"], vmath.vector3(item.data.hp / item.data.hpmax:GetValue(), 1, 1))
-				gui.set_color(item.nodes[hash"charitem_hptext"], vmath.vector3(1,0,0) * item.data.hp / item.data.hpmax:GetValue())
-				richtext_autoscale(self, item.nodes[hash"charitem_hptext"], "HP: " .. item.data.hp .. "/" .. item.data.hpmax:GetValue(), 0.4, 200)
-                if item.data.icon then
+				richtext_autoscale(self, item.nodes[hash "charitem_text"], item.data.name, 1, 200)
+				gui.set_scale(item.nodes[hash "charitem_hpbar"], vmath.vector3(item.data.hp / item.data.hpmax:GetValue(), 1, 1))
+				gui.set_color(item.nodes[hash "charitem_hptext"], vmath.vector3(1, 0, 0) * item.data.hp / item.data.hpmax:GetValue())
+				richtext_autoscale(self, item.nodes[hash "charitem_hptext"], "HP: " .. item.data.hp .. "/" .. item.data.hpmax:GetValue(), 0.4, 200)
+				if item.data.icon then
 					load_texture(self, item.data.icon)
-					gui.set_texture(item.nodes[hash"charitem_image"], item.data.icon)
-					gui.set_color(item.nodes[hash"charitem_image"], item.data.iconcolor or vmath.vector4(1))
+					gui.set_texture(item.nodes[hash "charitem_image"], item.data.icon)
+					gui.set_color(item.nodes[hash "charitem_image"], item.data.iconcolor or vmath.vector4(1))
 				else
-					gui.set_color(item.nodes[hash"charitem_image"], vmath.vector4(0))
+					gui.set_color(item.nodes[hash "charitem_image"], vmath.vector4(0))
 				end
 				if self.enemy_turn then
 					if item.data == self.active_character then
-						gui.set_text(item.nodes[hash"charitem_acttext"], "Active")
-						gui.set_color(item.nodes[hash"charitem_acttext"], gui_colors.charlist.acttext.active)
+						gui.set_text(item.nodes[hash "charitem_acttext"], "Active")
+						gui.set_color(item.nodes[hash "charitem_acttext"], gui_colors.charlist.acttext.active)
 					else
-						gui.set_text(item.nodes[hash"charitem_acttext"], "")
+						gui.set_text(item.nodes[hash "charitem_acttext"], "")
 					end
 				else
 					if self.get_character_controllable(item.data) then
 						if item.data == self.active_character then
-							gui.set_text(item.nodes[hash"charitem_acttext"], "Active")
-							gui.set_color(item.nodes[hash"charitem_acttext"], gui_colors.charlist.acttext.active)
-						else 
-							gui.set_text(item.nodes[hash"charitem_acttext"], "Ready")
-							gui.set_color(item.nodes[hash"charitem_acttext"], gui_colors.charlist.acttext.ready)
+							gui.set_text(item.nodes[hash "charitem_acttext"], "Active")
+							gui.set_color(item.nodes[hash "charitem_acttext"], gui_colors.charlist.acttext.active)
+						else
+							gui.set_text(item.nodes[hash "charitem_acttext"], "Ready")
+							gui.set_color(item.nodes[hash "charitem_acttext"], gui_colors.charlist.acttext.ready)
 						end
 					else
 						if item.data == self.active_character then
-							gui.set_text(item.nodes[hash"charitem_acttext"], "Viewing")
-							gui.set_color(item.nodes[hash"charitem_acttext"], gui_colors.charlist.acttext.viewing)
-							
+							gui.set_text(item.nodes[hash "charitem_acttext"], "Viewing")
+							gui.set_color(item.nodes[hash "charitem_acttext"], gui_colors.charlist.acttext.viewing)
+
 						else
-							gui.set_text(item.nodes[hash"charitem_acttext"], "")
-							
+							gui.set_text(item.nodes[hash "charitem_acttext"], "")
+
 						end
 					end
 				end
@@ -218,7 +221,7 @@ function init(self)
 			if list.over_item and list.over_item.data then
 				local data = list.over_item.data
 				richtext_autoscale(self, gui.get_node("tooltip_text"), string.gsub(
-				"{name}\n<color={hpcolor}>HP: {hp}/{hpmax}</color>\n<color=red>Atk: {attack}  </color><color=purple>Mat: {magicattack}  </color><color=brown>Acc: {accuracy}</color>\n<color=teal><color=blue>Def: {defense}  </color>Mdf: {magicdefense}  </color><color=green>Eva: {evasion}</color>{acthint}", "%{(.-)%}", function(s)
+					"Lv. {level} {name}\n<color={hpcolor}>HP: {hp}/{hpmax}</color>\n<color=red>Atk: {attack}  </color><color=purple>Mat: {magicattack}  </color><color=brown>Acc: {accuracy}</color>\n<color=teal><color=blue>Def: {defense}  </color>Mdf: {magicdefense}  </color><color=green>Eva: {evasion}</color>{acthint}", "%{(.-)%}", function(s)
 					if s == "acthint" then
 						if data.enemy then
 							return "\n\nEnemy"
@@ -230,9 +233,9 @@ function init(self)
 							end
 						end
 					elseif s == "hpcolor" then
-						return (data.hp / data.hpmax:GetValue()) .. ",0,0,1"
+						return string.format("%.2f,0,0,1", data.hp / data.hpmax:GetValue())
 					end
-					return (type(data[s])=="table") and data[s].GetValue and data[s]:GetValue() or data[s]
+					return (type(data[s]) == "table") and data[s].GetValue and data[s]:GetValue() or data[s]
 				end), nil) --nil blocks second output from gsub
 			end
 			if list.out_item_now and list.out_item_now.data then
@@ -247,12 +250,12 @@ function init(self)
 		end
 	end
 
-	self.selected_charlist = function (list)
+	self.selected_charlist = function(list)
 		if not list.selected_item.data then return end
 		if self.get_character_controllable() and self.skill_selected then
 			if self.skill_targets[list.selected_item.data] then
 				if list.selected_item.data == self.selected_target[1] then
-					self.press_confirmbutton({node=gui.get_node("confirmbutton")})
+					self.press_confirmbutton({node = gui.get_node("confirmbutton")})
 				else
 					self.highlight_unchosen_target(self.selected_target[2])
 					self.selected_target = {list.selected_item.data, list.selected_item.nodes}
@@ -276,74 +279,74 @@ function init(self)
 		self:do_gooey()
 	end
 
-	self.scrolled_char1 = function (scrollbar)
+	self.scrolled_char1 = function(scrollbar)
 		self.char_list1_gui.scroll_to(scrollbar.scroll.x, scrollbar.scroll.y)
 	end
 
-	self.scrolled_char2 = function (scrollbar)
+	self.scrolled_char2 = function(scrollbar)
 		self.char_list2_gui.scroll_to(scrollbar.scroll.x, scrollbar.scroll.y)
 	end
 
-	self.update_statuslist = function (list)
-		for i,item in ipairs(list.items) do
+	self.update_statuslist = function(list)
+		for i, item in ipairs(list.items) do
 			if item.data and item.data ~= "" then
 				if item.data.icon then
 					load_texture(self, item.data.icon)
-					gui.set_texture(item.nodes[hash"statusitem_image"], item.data.icon)
-					gui.set_color(item.nodes[hash"statusitem_image"], item.data.iconcolor or vmath.vector4(1))
+					gui.set_texture(item.nodes[hash "statusitem_image"], item.data.icon)
+					gui.set_color(item.nodes[hash "statusitem_image"], item.data.iconcolor or vmath.vector4(1))
 				end
 				if item.data.stacks then
-					gui.set_color(item.nodes[hash"statusitem_counter"], vmath.vector4(0,0,0,1))
-					gui.set_text(item.nodes[hash"statusitem_counter"], item.data.stacks)
-					gui.set_outline(item.nodes[hash"statusitem_counter"], item.data.iconcolor)
+					gui.set_color(item.nodes[hash "statusitem_counter"], vmath.vector4(0, 0, 0, 1))
+					gui.set_text(item.nodes[hash "statusitem_counter"], item.data.stacks)
+					gui.set_outline(item.nodes[hash "statusitem_counter"], item.data.iconcolor)
 				else
-					gui.set_color(item.nodes[hash"statusitem_counter"], vmath.vector4(0))
+					gui.set_color(item.nodes[hash "statusitem_counter"], vmath.vector4(0))
 				end
 			end
 		end
 		if list.over_item and list.over_item.data then
 			local data = list.over_item.data
 			richtext_autoscale(self, gui.get_node("tooltip_text"), string.gsub(
-			"{name}\n{desc}", "%{(.-)%}", function(s)
+				"{name}\n{desc}", "%{(.-)%}", function(s)
 				return data and data[s]
 			end), nil)
 		end
 	end
 
-	self.highlight_chosen_target = function (nodes, color)
+	self.highlight_chosen_target = function(nodes, color)
 		color = color or ((self.active_character.enemy == self.selected_target[1].enemy) and gui_colors.charlist.highlight_ally or gui_colors.charlist.highlight_foe)
-		gui.cancel_animation(nodes[hash"charitem_btn"], gui.PROP_COLOR)
-		gui.set_color(nodes[hash"charitem_btn"], color)
-		gui.set_visible(nodes[hash"charitem_pointer"], true)
-		gui.cancel_animation(nodes[hash"charitem_pointer"], gui.PROP_COLOR)
-		gui.cancel_animation(nodes[hash"charitem_pointer"], gui.PROP_POSITION)
-		gui.set_position(nodes[hash"charitem_pointer"], vmath.vector3(125,0,0))
-		gui.play_flipbook(nodes[hash"charitem_pointer"], "trianglebig")
-		gui.set_color(nodes[hash"charitem_pointer"], color)
+		gui.cancel_animation(nodes[hash "charitem_btn"], gui.PROP_COLOR)
+		gui.set_color(nodes[hash "charitem_btn"], color)
+		gui.set_visible(nodes[hash "charitem_pointer"], true)
+		gui.cancel_animation(nodes[hash "charitem_pointer"], gui.PROP_COLOR)
+		gui.cancel_animation(nodes[hash "charitem_pointer"], gui.PROP_POSITION)
+		gui.set_position(nodes[hash "charitem_pointer"], vmath.vector3(125, 0, 0))
+		gui.play_flipbook(nodes[hash "charitem_pointer"], "trianglebig")
+		gui.set_color(nodes[hash "charitem_pointer"], color)
 	end
 
-	self.highlight_unchosen_target = function (nodes, color)
+	self.highlight_unchosen_target = function(nodes, color)
 		color = color or ((self.active_character.enemy == self.selected_target[1].enemy) and gui_colors.charlist.highlight_ally or gui_colors.charlist.highlight_foe)
-		gui.set_color(nodes[hash"charitem_btn"], gui_colors.charlist.normal)
-		gui.animate(nodes[hash"charitem_btn"], gui.PROP_COLOR, color, gui.EASING_INOUTQUAD, 1, 0, nil, gui.PLAYBACK_LOOP_PINGPONG)
-		gui.set_visible(nodes[hash"charitem_pointer"], true)
-		gui.set_position(nodes[hash"charitem_pointer"], vmath.vector3(125,0,0))
-		gui.play_flipbook(nodes[hash"charitem_pointer"], "trianglesmall")
-		gui.set_color(nodes[hash"charitem_pointer"], gui_colors.charlist.normal)
-		gui.animate(nodes[hash"charitem_pointer"], gui.PROP_COLOR, color, gui.EASING_INOUTQUAD, 1, 0, nil, gui.PLAYBACK_LOOP_PINGPONG)
-		gui.animate(nodes[hash"charitem_pointer"], gui.PROP_POSITION, vmath.vector3(119,0,0), gui.EASING_INOUTQUAD, 1.5, 0, nil, gui.PLAYBACK_LOOP_PINGPONG)
+		gui.set_color(nodes[hash "charitem_btn"], gui_colors.charlist.normal)
+		gui.animate(nodes[hash "charitem_btn"], gui.PROP_COLOR, color, gui.EASING_INOUTQUAD, 1, 0, nil, gui.PLAYBACK_LOOP_PINGPONG)
+		gui.set_visible(nodes[hash "charitem_pointer"], true)
+		gui.set_position(nodes[hash "charitem_pointer"], vmath.vector3(125, 0, 0))
+		gui.play_flipbook(nodes[hash "charitem_pointer"], "trianglesmall")
+		gui.set_color(nodes[hash "charitem_pointer"], gui_colors.charlist.normal)
+		gui.animate(nodes[hash "charitem_pointer"], gui.PROP_COLOR, color, gui.EASING_INOUTQUAD, 1, 0, nil, gui.PLAYBACK_LOOP_PINGPONG)
+		gui.animate(nodes[hash "charitem_pointer"], gui.PROP_POSITION, vmath.vector3(119, 0, 0), gui.EASING_INOUTQUAD, 1.5, 0, nil, gui.PLAYBACK_LOOP_PINGPONG)
 	end
 
-	self.unhighlight_target = function (nodes, color)
+	self.unhighlight_target = function(nodes, color)
 		color = color or gui_colors.charlist.normal
-		gui.cancel_animation(nodes[hash"charitem_btn"], gui.PROP_COLOR)
-		gui.set_color(nodes[hash"charitem_btn"], color)
-		gui.set_visible(nodes[hash"charitem_pointer"], false)
-		gui.cancel_animation(nodes[hash"charitem_pointer"], gui.PROP_COLOR)
-		gui.cancel_animation(nodes[hash"charitem_pointer"], gui.PROP_POSITION)
+		gui.cancel_animation(nodes[hash "charitem_btn"], gui.PROP_COLOR)
+		gui.set_color(nodes[hash "charitem_btn"], color)
+		gui.set_visible(nodes[hash "charitem_pointer"], false)
+		gui.cancel_animation(nodes[hash "charitem_pointer"], gui.PROP_COLOR)
+		gui.cancel_animation(nodes[hash "charitem_pointer"], gui.PROP_POSITION)
 	end
 
-	self.update_confirmbutton = function (button)
+	self.update_confirmbutton = function(button)
 		if self.skill_selected or self.battle_ended then
 			if button.over_now then
 				gui.set_color(button.node, gui_colors.confirmbutton.hover)
@@ -354,13 +357,24 @@ function init(self)
 		end
 	end
 
-	self.press_confirmbutton = function (button)
+	self.press_confirmbutton = function(button)
 		if self.battle_ended then
 			if self.player_victory then
-				--TODO
-			else
-				monarch.back()
+				for i, player in ipairs(Party) do
+					player.xp = player.xp + self.rewardpool.xp
+                end
+				for i, drop in ipairs(self.rewardpool.drops) do
+                    local inventory_at = table.find_if(Inventory, function(inv_item) return inv_item.id == drop.id end)
+					if inventory_at then
+                        Inventory[inventory_at].amount = Inventory[inventory_at].amount + drop.amount
+                    else
+                        table.insert(Inventory, table.deepcopy(content.perks[drop.id]))
+						Inventory[#Inventory].amount = drop.amount
+					end
+                end
+				msg.post("/main", "save_game")
 			end
+			monarch.back()
 		elseif self.skill_selected then
 			sound.play("/sound#click")
 			gui.set_color(button.node, gui_colors.confirmbutton.normal)
@@ -372,7 +386,7 @@ function init(self)
 			self.check_objectives()
 			if not self.battle_ended then
 				local next_character_available = false
-				for i,char in ipairs(self.active_character.enemy and self.char2_list or self.char1_list) do
+				for i, char in ipairs(self.active_character.enemy and self.char2_list or self.char1_list) do
 					if self.get_character_controllable(char) then
 						self.set_active_character(char)
 						next_character_available = true
@@ -387,17 +401,27 @@ function init(self)
 		self:do_gooey()
 	end
 
-	self.check_objectives = function ()
+	self.check_objectives = function()
 		local all_foes_defeated = true
 		local cleanup_and_repeat = false
-		for i=1,#self.char2_list do
-			for i2,char in ipairs(self.char2_list) do
+		for i = 1, #self.char2_list do
+			for i2, char in ipairs(self.char2_list) do
 				if char.hp > 0 then
 					all_foes_defeated = false
 				elseif not char.dead then
 					self.write_log(string.format("%s is defeated", char.name))
 					if not char.significant then
-						cleanup_and_repeat = true
+                        cleanup_and_repeat = true
+                        self.rewardpool.xp = self.rewardpool.xp + char.reward_xp * char.level * 1.1 ^ (char.level - 1)
+						local drop_choices = table.keys(content.perks)
+                        local drop_id = drop_choices[RNG.world:random(#drop_choices)]
+						local drop_at = table.find_if(self.rewardpool.drops, function(exist_drop) return drop_id == exist_drop.id end)
+						if drop_at then
+							self.rewardpool.drops[drop_at].amount = self.rewardpool.drops[drop_at].amount + 1
+                        else
+                            table.insert(self.rewardpool.drops, table.deepcopy(content.perks[drop_id]))
+							self.rewardpool.drops[#self.rewardpool.drops].amount = 1
+						end
 					else
 						char.dead = true
 					end
@@ -412,7 +436,13 @@ function init(self)
 			end
 		end
 		if all_foes_defeated then
-			self.write_log("You win!")
+            self.write_log("You win!")
+			if self.rewardpool.xp > 0 then
+            	self.write_log("Gained " .. self.rewardpool.xp .. " XP")
+			end
+			if #self.rewardpool.drops > 0 then
+				self.write_log("Gained " .. table.concat(table.map(self.rewardpool.drops, function (drop) return drop.amount .. "x " .. drop.name end), ", "))
+			end
 			gui.set_text(gui.get_node("turninfo_text"), "VICTORY")
 			gui.set_text(gui.get_node("confirmbutton_text"), "Continue")
 			self.player_victory = true
@@ -420,7 +450,7 @@ function init(self)
 			return
 		end
 		local all_allies_defeated = true
-		for i,char in ipairs(self.char1_list) do
+		for i, char in ipairs(self.char1_list) do
 			if char.hp > 0 then
 				all_allies_defeated = false
 				break
@@ -435,22 +465,22 @@ function init(self)
 		end
 	end
 
-	self.end_battle = function ()
+	self.end_battle = function()
 		self.battle_ended = true
 		self.enemy_turn = false
 		gui.set_alpha(gui.get_node("confirmbutton"), 1)
 	end
 
-	self.set_active_character = function (char)
+	self.set_active_character = function(char)
 		self.active_character = char
 		richtext_autoscale(self, gui.get_node("skilllist_title"), string.format("%s's moves", char.name), 0.8, 175)
 		self.skill_list = char.skills
 		self:do_gooey()
 	end
 
-	self.start_turn = function (enemy_turn)
-		for i,char in ipairs(enemy_turn and self.char1_list or self.char2_list) do
-			for i2,status in ipairs(char.statuses) do
+	self.start_turn = function(enemy_turn)
+		for i, char in ipairs(enemy_turn and self.char1_list or self.char2_list) do
+			for i2, status in ipairs(char.statuses) do
 				if status.OnTurnEnd then
 					status:OnTurnEnd()
 				end
@@ -461,9 +491,9 @@ function init(self)
 			self.write_log(string.format("     - TURN %d -", self.turn_count))
 		end
 		gui.set_text(gui.get_node("turninfo_text"), string.format(enemy_turn and "Enemy Turn %d" or "Player Turn %d", self.turn_count))
-		for i,char in ipairs(enemy_turn and self.char2_list or self.char1_list) do
+		for i, char in ipairs(enemy_turn and self.char2_list or self.char1_list) do
 			char.actions = 1
-			for i2,status in ipairs(char.statuses) do
+			for i2, status in ipairs(char.statuses) do
 				if status.OnTurnStart then
 					status:OnTurnStart()
 				end
@@ -479,64 +509,71 @@ function init(self)
 	self.do_gooey = function(self, action_id, action) -- run on on_input, but also used to run the update functions again after a selection function during middle of primary call
 		self.char_list1_gui = gooey.dynamic_list("charlist1_bg", "charlist1_stencil", "charitem1_bg", self.char1_list, action_id, action, nil, self.selected_charlist, self.update_charlist1)
 		self.char_list2_gui = gooey.dynamic_list("charlist2_bg", "charlist2_stencil", "charitem2_bg", self.char2_list, action_id, action, nil, self.selected_charlist, self.update_charlist2)
-		for _,char_list in pairs{{self.char_list1_gui, 1}, {self.char_list2_gui, 2}} do
-			for i,char in pairs(char_list[1].items) do
+		for _, char_list in pairs {{self.char_list1_gui, 1}, {self.char_list2_gui, 2}} do
+			for i, char in pairs(char_list[1].items) do
 				if char.data then
-					gooey.dynamic_list("statuslist_container" .. char_list[2] .. "_" .. char.index, "statuslist_stencil" .. char_list[2] .. "_" .. char.index, "statusitem" .. char_list[2] .. "_" .. char.index, char.data.statuses, action_id, action, {horizontal=true}, nil, self.update_statuslist)
+					gooey.dynamic_list("statuslist_container" .. char_list[2] .. "_" .. char.index, "statuslist_stencil" .. char_list[2] .. "_" .. char.index, "statusitem" .. char_list[2] .. "_" .. char.index, char.data.statuses, action_id, action, {horizontal = true}, nil, self.update_statuslist)
 				end
 			end
 		end
 		self.skill_list_gui = gooey.dynamic_list("skilllist_bg", "skilllist_stencil", "skillitem_bg", self.skill_list, action_id, action, nil, self.selected_skilllist, self.update_skilllist)
 		if self.char_list1_gui.data_size > 5 then
+			gui.set_position(gui.get_node("charlist1_bg"), vmath.vector3(125, 648, 0))
 			gui.set_alpha(gui.get_node("charscroll1_bg"), 1)
 			gui.set_size(gui.get_node("charscroll1_handle"), vmath.vector3(18, 648 * 5 / self.char_list1_gui.data_size, 0))
 			self.char_list1_scrollbar = gooey.vertical_scrollbar("charscroll1_handle", "charscroll1_bg", action_id, action, self.scrolled_char1)
 		else
+			gui.set_position(gui.get_node("charlist1_bg"), vmath.vector3(125, 648 - 324 / 5 * (5 - self.char_list1_gui.data_size), 0))
 			gui.set_alpha(gui.get_node("charscroll1_bg"), 0)
 		end
 		if self.char_list2_gui.data_size > 5 then
+			gui.set_position(gui.get_node("charlist1_bg"), vmath.vector3(1027, 648, 0))
 			gui.set_alpha(gui.get_node("charscroll2_bg"), 1)
 			gui.set_size(gui.get_node("charscroll2_handle"), vmath.vector3(18, 648 * 5 / self.char_list2_gui.data_size, 0))
 			self.char_list2_scrollbar = gooey.vertical_scrollbar("charscroll2_handle", "charscroll2_bg", action_id, action, self.scrolled_char2)
 		else
+			gui.set_position(gui.get_node("charlist2_bg"), vmath.vector3(1027, 648 - 324 / 5 * (5 - self.char_list2_gui.data_size), 0))
 			gui.set_alpha(gui.get_node("charscroll2_bg"), 0)
 		end
 		if self.skill_list_gui.data_size > 15 then
+			gui.set_position(gui.get_node("skilllist_bg"), vmath.vector3(355, 648, 0))
 			gui.set_alpha(gui.get_node("skillscroll_bg"), 1)
 			gui.set_size(gui.get_node("skillscroll_handle"), vmath.vector3(14, 648 * 15 / self.skill_list_gui.data_size, 0))
 			self.skill_list_scrollbar = gooey.vertical_scrollbar("skillscroll_handle", "skillscroll_bg", action_id, action, self.scrolled_skill)
 		else
+			gui.set_position(gui.get_node("skilllist_bg"), vmath.vector3(355, 648 - 620 / 30 * (15 - self.skill_list_gui.data_size), 0))
 			gui.set_alpha(gui.get_node("skillscroll_bg"), 0)
 		end
 		gooey.button("confirmbutton", action_id, action, self.press_confirmbutton, self.update_confirmbutton)
 	end
-	
+
 	local charlist2_gui = gui.clone_tree(gui.get_node("charlist1_bg"))
 	local charlist2_remap = {
-		[hash"charlist1_bg"] = hash"charlist2_bg",
-		[hash"charlist1_stencil"] = hash"charlist2_stencil",
-		[hash"charitem1_bg"] = hash"charitem2_bg",
+		[hash "charlist1_bg"] = hash "charlist2_bg",
+		[hash "charlist1_stencil"] = hash "charlist2_stencil",
+		[hash "charitem1_bg"] = hash "charitem2_bg",
 	}
-	for id,node in pairs(charlist2_gui) do
+	for id, node in pairs(charlist2_gui) do
 		if charlist2_remap[id] then
 			gui.set_id(node, charlist2_remap[id])
 		else
 			gui.set_id(node, id)
 		end
 	end
-	gui.set_position(charlist2_gui[hash"charlist1_bg"], vmath.vector3(1027,648,0))
-	gui.set_position(charlist2_gui[hash"charitem_text"], vmath.vector3(-80,-22,0))
-	gui.set_position(charlist2_gui[hash"charitem_image"], vmath.vector3(-80,-22,0))
-	gui.set_scale(charlist2_gui[hash"charitem_pointer_tf"], vmath.vector3(-1,1,1))
+	gui.set_position(charlist2_gui[hash "charlist1_bg"], vmath.vector3(1027, 648, 0))
+	gui.set_position(charlist2_gui[hash "charitem_text"], vmath.vector3(-80, -22, 0))
+	gui.set_position(charlist2_gui[hash "charitem_image"], vmath.vector3(-80, -22, 0))
+	gui.set_scale(charlist2_gui[hash "charitem_pointer_tf"], vmath.vector3(-1, 1, 1))
 	gui.move_above(gui.get_node("tooltip_bg"), gui.get_node("charlist2_bg"))
 
-	table.insert(self.char1_list, Battler("hero"))
-	table.insert(self.char1_list, Battler("uncle"))
-	table.insert(self.char2_list, Battler("bun", true))
-	table.insert(self.char2_list, Battler("bun", true))
-	table.insert(self.char2_list, Battler("bun", true))
-	table.insert(self.char2_list, Battler("bun", true))
-	
+	for i, player in ipairs(Party) do
+		table.insert(self.char1_list, Battler(player))
+    end
+	for i=1,4 do
+		local enemy = Battler("bun", true, Party[1].level)
+		table.insert(self.char2_list, enemy)
+	end
+
 	self.start_turn()
 end
 
@@ -546,7 +583,7 @@ function update(self, dt)
 		if self.enemy_timer > enemy_move_preview_time or self.skip_enemy_turn then
 			if not self.get_character_controllable(self.active_character, true) then
 				local next_character_available = false
-				for i,char in ipairs(self.char2_list) do
+				for i, char in ipairs(self.char2_list) do
 					if self.get_character_controllable(char, true) then
 						self.set_active_character(char)
 						next_character_available = true
@@ -560,12 +597,12 @@ function update(self, dt)
 				end
 				self:do_gooey()
 				local chosen_move = self.skill_list_gui.items[RNG.battle:random(#self.active_character.skills)]
-				self.skill_button_selected = chosen_move.nodes[hash"skillitem_btn"]
+				self.skill_button_selected = chosen_move.nodes[hash "skillitem_btn"]
 				self.skill_selected = chosen_move.data
 				local skill_targets = {}
 				if chosen_move.data.target then
-					for _,char_list in pairs{self.char_list1_gui, self.char_list2_gui} do
-						for i,char in pairs(char_list.items) do
+					for _, char_list in pairs {self.char_list1_gui, self.char_list2_gui} do
+						for i, char in pairs(char_list.items) do
 							if char.data and chosen_move.data.target(self.active_character, char.data) then
 								self.skill_targets[char.data] = char.nodes
 								table.insert(skill_targets, {char.data, char.nodes})
@@ -597,22 +634,22 @@ function update(self, dt)
 end
 
 function on_input(self, action_id, action)
-	if action_id == hash"mouse_wheel_up" or action_id == hash"mouse_wheel_down"  and not action.released then --rapid scrolling isn't pressed
-		for nodes,list in pairs{
+	if action_id == hash "mouse_wheel_up" or action_id == hash "mouse_wheel_down" and not action.released then --rapid scrolling isn't pressed
+		for nodes, list in pairs {
 			[{"charlist1_bg", "charscroll1_bg"}] = {self.char_list1_gui, self.char_list1_scrollbar, 5},
 			[{"charlist2_bg", "charscroll2_bg"}] = {self.char_list2_gui, self.char_list2_scrollbar, 5},
 			[{"skilllist_bg", "skillscroll_bg"}] = {self.skill_list_gui, self.skill_list_scrollbar, 15},
 		} do
 			local picked = false
-			for _,id in pairs(nodes) do
+			for _, id in pairs(nodes) do
 				if gui.pick_node(gui.get_node(id), action.x, action.y) then
 					picked = true
 					break
 				end
 			end
 			if picked then
-				local scroll_to_amt = math.clamp(list[1].scroll.y + ((action_id == hash"mouse_wheel_down") and 1 or -1) / (list[1].data_size - list[3]), 0, 1)
-				list[1].scroll_to(0,  scroll_to_amt)
+				local scroll_to_amt = math.clamp(list[1].scroll.y + ((action_id == hash "mouse_wheel_down") and 1 or -1) / (list[1].data_size - list[3]), 0, 1)
+				list[1].scroll_to(0, scroll_to_amt)
 				if list[2] then
 					list[2].scroll_to(0, scroll_to_amt)
 				end
@@ -622,7 +659,7 @@ function on_input(self, action_id, action)
 	end
 	if self.enemy_turn then
 		if action.pressed then
-			if action_id == hash"touch" then
+			if action_id == hash "touch" then
 				self.enemy_timer = math.huge
 			else
 				action_id = mapper.on_input(action_id, 1)
@@ -638,7 +675,7 @@ function on_input(self, action_id, action)
 		if action.pressed then
 			action_id = mapper.on_input(action_id, 1)
 			if action_id == "confirm" then
-				self.press_confirmbutton({node=gui.get_node("confirmbutton")})
+				self.press_confirmbutton({node = gui.get_node("confirmbutton")})
 			elseif action_id == "cancel" then
 				if self.skill_button_selected then
 					self.deselect_skill(self.skill_button_selected)
@@ -646,7 +683,7 @@ function on_input(self, action_id, action)
 					sound.play("/sound#woosh")
 					self:do_gooey()
 				elseif not self.get_character_controllable() then
-					for i,char in ipairs(self.char1_list) do
+					for i, char in ipairs(self.char1_list) do
 						if self.get_character_controllable(char) then
 							self.set_active_character(char)
 							sound.play("/sound#woosh")
@@ -660,7 +697,7 @@ function on_input(self, action_id, action)
 end
 
 function on_message(self, message_id, message, sender)
-	if message_id == hash"write_log" then
+	if message_id == hash "write_log" then
 		self.write_log(message.text)
 	end
 end
