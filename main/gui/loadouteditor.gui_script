@@ -38,8 +38,7 @@ function init(self)
             local button = item.nodes[hash "perkitem_btn"]
             if item.data and item.data ~= "" then
                 richtext_autoscale(self, item.nodes[hash "perkitem_text"], item.data.name, 0.8, 125)
-                if item.data.icon then
-                    load_texture(self, item.data.icon)
+                if item.data.icon and load_texture(self, item.data.icon) then
                     gui.set_texture(item.nodes[hash "perkitem_image"], item.data.icon)
                     gui.set_color(item.nodes[hash "perkitem_image"], item.data.iconcolor or vmath.vector4(1))
                 else
@@ -74,16 +73,16 @@ function init(self)
         local button = list.selected_item.nodes[hash "perkitem_btn"]
         if self.perk_button_selected or self.storeperk_button_selected then
             if self.perk_button_selected ~= button then --deselect previous perk when clicking new one
-                sound.play("/sound#click")
+                msg.post("/sound", "play", {id = "click"})
                 self.deselect_perk(self.perk_button_selected)
             else --click on selected perk to deselect
-                sound.play("/sound#woosh")
+                msg.post("/sound", "play", {id = "woosh"})
                 self.deselect_perk(self.perk_button_selected)
                 self:do_gooey()
                 return --do not fallthrough to selection
             end
         else
-            sound.play("/sound#click")
+            msg.post("/sound", "play", {id = "click"})
         end
         self.perk_button_selected = button
         self.perk_selected = list.selected_item.data
@@ -121,8 +120,7 @@ function init(self)
             local button = item.nodes[hash "storeperkitem_btn"]
             if item.data and item.data ~= "" then
                 richtext_autoscale(self, item.nodes[hash "storeperkitem_text"], item.data.name .. " x" .. item.data.amount, 0.8, 125)
-                if item.data.icon then
-                    load_texture(self, item.data.icon)
+                if item.data.icon and load_texture(self, item.data.icon) then
                     gui.set_texture(item.nodes[hash "storeperkitem_image"], item.data.icon)
                     gui.set_color(item.nodes[hash "storeperkitem_image"], item.data.iconcolor or vmath.vector4(1))
                 else
@@ -157,16 +155,16 @@ function init(self)
         local button = list.selected_item.nodes[hash "storeperkitem_btn"]
         if self.perk_button_selected or self.storeperk_button_selected then
             if self.storeperk_button_selected ~= button then --deselect previous perk when clicking new one
-                sound.play("/sound#click")
+                msg.post("/sound", "play", {id = "click"})
                 self.deselect_perk(self.storeperk_button_selected)
             else --click on selected perk to deselect
-                sound.play("/sound#woosh")
+                msg.post("/sound", "play", {id = "woosh"})
                 self.deselect_perk(self.storeperk_button_selected)
                 self:do_gooey()
                 return --do not fallthrough to selection
             end
         else
-            sound.play("/sound#click")
+            msg.post("/sound", "play", {id = "click"})
         end
         self.storeperk_button_selected = button
         self.storeperk_selected = list.selected_item.data
@@ -188,10 +186,12 @@ function init(self)
             if item.data and item.data ~= "" then
                 gui.set_color(item.nodes[hash "charitem_btn"], (self.selected_char and self.selected_char[1] == item.data) and gui_colors.charlist.selected or gui_colors.charlist.normal)
                 richtext_autoscale(self, item.nodes[hash "charitem_text"], item.data.name, 1, 200)
+                gui.set_scale(item.nodes[hash "charitem_xpbar"], vmath.vector3(item.data.xp / content.formulas.xpmax(item.data.level), 1, 1))
+                gui.set_color(item.nodes[hash "charitem_xptext"], vmath.vector3(0, 1, 0.5) * item.data.xp / content.formulas.xpmax(item.data.level) + vmath.vector3(0, 0, 0.5))
+                richtext_autoscale(self, item.nodes[hash "charitem_xptext"], "XP: " .. item.data.xp .. "/" .. content.formulas.xpmax(item.data.level), 0.4, 200)
                 gui.set_color(item.nodes[hash "charitem_lvltext"], (item.data:SumLevelsSpent() < item.data.level) and gui_colors.charlist.highlight_lvl or vmath.vector3(0, 0, 0, 1))
                 richtext_autoscale(self, item.nodes[hash "charitem_lvltext"], "Level: " .. item.data:SumLevelsSpent() .. "/" .. item.data.level, 1, 220)
-                if item.data.icon then
-                    load_texture(self, item.data.icon)
+                if item.data.icon and load_texture(self, item.data.icon) then
                     gui.set_texture(item.nodes[hash "charitem_image"], item.data.icon)
                     gui.set_color(item.nodes[hash "charitem_image"], item.data.iconcolor or vmath.vector4(1))
                 else
@@ -204,9 +204,12 @@ function init(self)
         end
         if self.selected_char then
             richtext_autoscale(self, gui.get_node("statsheet_text"), string.gsub(
-                "Lv. {level} {name}\n<color=red>Max HP: {hpmax}</color>\n<color=red>Atk: {attack}  </color><color=purple>Mat: {magicattack}  </color><color=brown>Acc: {accuracy}</color>\n<color=teal><color=blue>Def: {defense}  </color>Mdf: {magicdefense}  </color><color=green>Eva: {evasion}</color>"
+                "Lv. {level} {class}\n<color=red>Max HP: {hpmax}</color>\n<color=red>Atk: {attack}  </color><color=purple>Mat: {magicattack}  </color><color=brown>Acc: {accuracy}</color>\n<color=teal><color=blue>Def: {defense}  </color>Mdf: {magicdefense}  </color><color=green>Eva: {evasion}</color>"
                 , "%{(.-)%}", function(s)
-                return (type(self.selected_char[1][s]) == "table") and self.selected_char[1][s].GetValue and self.selected_char[1][s]:GetValue() or self.selected_char[1][s]
+                    if s == "class" and not self.selected_char[1].class then
+                        return "Human"
+                    end
+                    return (type(self.selected_char[1][s]) == "table") and self.selected_char[1][s].GetValue and self.selected_char[1][s]:GetValue() or self.selected_char[1][s]
             end), nil) --nil blocks second output from gsub
         end
     end
@@ -214,7 +217,7 @@ function init(self)
     function self.selected_charlist(list)
         if not list.selected_item.data then return end
         if self.selected_char[1] ~= list.selected_item.data then
-            sound.play("/sound#click")
+            msg.post("/sound", "play", {id = "click"})
             self.set_selected_char({list.selected_item.data, list.selected_item.nodes})
         end
     end
@@ -281,7 +284,7 @@ function init(self)
                 self.storeperk_button_selected = nil
                 self.storeperk_selected = nil
             end
-            sound.play("/sound#click")
+            msg.post("/sound", "play", {id = "click"})
             self.perk_selected = self.perk_list[#self.perk_list]
             self:do_gooey()
             self.perk_button_selected = self.perk_list_gui.items[#self.perk_list].nodes[hash "perkitem_btn"]
@@ -318,7 +321,7 @@ function init(self)
                 self.storeperk_button_selected = self.storeperk_list_gui.items[#self.storeperk_list].nodes[hash "storeperkitem_btn"]
                 self:do_gooey()
             end
-            sound.play("/sound#click")
+            msg.post("/sound", "play", {id = "click"})
             self:do_gooey()
         end
     end
@@ -333,8 +336,8 @@ function init(self)
     end
 
     function self.press_fightbutton(button)
-        sound.play("/sound#click")
-        monarch.show(hash "battle")
+        msg.post("/sound", "play", {id = "click"})
+        monarch.show("battle")
     end
 
     function self.do_gooey(self, action_id, action)
@@ -372,6 +375,7 @@ function init(self)
         gooey.button("equipbutton", action_id, action, self.press_equipbutton, self.update_equipbutton)
         gooey.button("unequipbutton", action_id, action, self.press_unequipbutton, self.update_unequipbutton)
         gooey.button("fightbutton", action_id, action, self.press_fightbutton, self.update_fightbutton)
+        gooey.button("optionsbutton", action_id, action, pressed_options_dropdown_button, update_options_dropdown_button)
     end
 
     self:do_gooey()

@@ -6,7 +6,7 @@ local skills = {
 		desc = "Damage an enemy.",
 		power = 10,
 		variance = 0.1,
-		target = GL.target_funcs[GL.TARGET_FOE],
+		target = GL.target_funcs.target_foe,
 		power_func = function(self, target, variance)
 			return math.round(self.power * self.user.attack:GetValue() / target.defense:GetValue() * (1 - self.variance + 2 * self.variance * variance))
 		end,
@@ -26,7 +26,7 @@ local skills = {
 		icon = "icons/shield",
 		iconcolor = vmath.vector4(0.0, 0, 0.5, 1),
 		desc = "Double your Defense and Magic Defense this turn.",
-		target = GL.target_funcs[GL.TARGET_SELF],
+		target = GL.target_funcs.target_self,
 		OnUse = function(self, target)
 			self.user:AddStatus("defending")
 			return string.format("%s defends", self.user.name)
@@ -37,14 +37,14 @@ local skills = {
 		icon = "icons/empty-hourglass",
 		iconcolor = vmath.vector4(0.35, 0.35, 0.2, 1),
 		desc = "Do nothing and end your turn.",
-		target = GL.target_funcs[GL.TARGET_SELF],
+		target = GL.target_funcs.target_self,
 	},
 	heal = {
 		name = "Heal",
 		icon = "icons/health-normal",
 		iconcolor = vmath.vector4(0.0, 0.5, 0, 1),
 		desc = "Restore an ally's HP.",
-		target = GL.target_funcs[GL.TARGET_ALLY],
+		target = GL.target_funcs.target_ally,
 		power = 1,
 		variance = 0.1,
 		power_func = function(self, target, variance)
@@ -67,7 +67,7 @@ local skills = {
 		icon = "icons/fist",
 		iconcolor = vmath.vector4(0.5, 0.7, 0.3, 1),
 		desc = "Boost an ally's attack.",
-		target = GL.target_funcs[GL.TARGET_ALLY],
+		target = GL.target_funcs.target_ally,
 		stacks = 40,
 		OnUse = function(self, target)
 			target:AddStatus("buffed_attack", {stacks = self.stacks})

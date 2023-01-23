@@ -69,7 +69,7 @@ setmetatable(Battler_class, {
 		Battler_data[object] = {}
         for _, stat in pairs {"hpmax", "attack", "defense", "magicattack", "magicdefense", "accuracy", "evasion"} do
 			if level then
-				object[stat] = math.round(object[stat] * 1.08 ^ (level - 1))
+				object[stat] = content.formulas.statscaling(object[stat], level)
 			end
 			object[stat] = ModStat(type(object[stat]) == "table" and object[stat]:GetValue() or object[stat])
 		end

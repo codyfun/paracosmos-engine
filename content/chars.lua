@@ -37,7 +37,7 @@ local chars = {
 		accuracy = 16,
 		evasion = 24,
         skill_ids = {"attack"},
-		reward_xp = 25,
+		reward_xp = 15,
 	}
 }
 for k, v in pairs(chars) do

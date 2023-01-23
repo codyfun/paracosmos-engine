@@ -58,13 +58,13 @@ local Player_class = {
 					object[stat]:RemoveMod(Player_data[object].level_mod)
 				end
 			end
-			Player_data[object].level_mod = {Apply = function(self, value) return math.round(value * 1.08 ^ (v - 1)) end}
+			Player_data[object].level_mod = {Apply = function(self, value) return content.formulas.statscaling(value, v) end}
 			for _, stat in pairs {"hpmax", "attack", "defense", "magicattack", "magicdefense", "accuracy", "evasion"} do
 				object[stat]:AddMod(Player_data[object].level_mod)
 			end
         elseif k == "xp" then
-			while v >= object.level * 100 * 1.1 ^ (object.level - 1) do
-				v = v - object.level * 100 * 1.1 ^ (object.level - 1)
+			while v >= content.formulas.xpmax(object.level) do
+				v = content.formulas.xpmax(object.level)
 				object.level = object.level + 1
 			end
 			Player_data[object][k] = v

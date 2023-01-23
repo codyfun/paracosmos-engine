@@ -1,0 +1,3 @@
+function on_message(self, message_id, message, sender)
+	sound.play("#" .. message.id, {gain = Options.mute and 0 or 1})
+end

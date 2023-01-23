@@ -56,8 +56,7 @@ function init(self)
 			local button = item.nodes[hash "skillitem_btn"]
 			if item.data and item.data ~= "" then
 				richtext_autoscale(self, item.nodes[hash "skillitem_text"], item.data.name, 0.8, 125)
-				if item.data.icon then
-					load_texture(self, item.data.icon)
+				if item.data.icon and load_texture(self, item.data.icon) then
 					gui.set_texture(item.nodes[hash "skillitem_image"], item.data.icon)
 					gui.set_color(item.nodes[hash "skillitem_image"], item.data.iconcolor or vmath.vector4(1))
 				else
@@ -92,19 +91,19 @@ function init(self)
 		local button = list.selected_item.nodes[hash "skillitem_btn"]
 		if self.skill_button_selected then
 			if self.skill_button_selected ~= button then --deselect previous skill when clicking new one
-				sound.play("/sound#click")
+				msg.post("/sound", "play", {id = "click"})
 				for data, nodes in pairs(self.skill_targets) do
 					self.unhighlight_target(nodes)
 				end
 				self.skill_targets = {}
 				gui.set_color(self.skill_button_selected, gui_colors.skilllist.normal)
 			else --click on selected skill to deselect
-				sound.play("/sound#woosh")
+				msg.post("/sound", "play", {id = "click"})
 				self.deselect_skill(self.skill_button_selected) --contains skill_targets clearing
 				return --do not fallthrough to selection
 			end
 		else
-			sound.play("/sound#click")
+			msg.post("/sound", "play", {id = "click"})
 		end
 		self.skill_button_selected = button
 		self.skill_selected = list.selected_item.data
@@ -181,8 +180,7 @@ function init(self)
 				gui.set_scale(item.nodes[hash "charitem_hpbar"], vmath.vector3(item.data.hp / item.data.hpmax:GetValue(), 1, 1))
 				gui.set_color(item.nodes[hash "charitem_hptext"], vmath.vector3(1, 0, 0) * item.data.hp / item.data.hpmax:GetValue())
 				richtext_autoscale(self, item.nodes[hash "charitem_hptext"], "HP: " .. item.data.hp .. "/" .. item.data.hpmax:GetValue(), 0.4, 200)
-				if item.data.icon then
-					load_texture(self, item.data.icon)
+				if item.data.icon and load_texture(self, item.data.icon) then
 					gui.set_texture(item.nodes[hash "charitem_image"], item.data.icon)
 					gui.set_color(item.nodes[hash "charitem_image"], item.data.iconcolor or vmath.vector4(1))
 				else
@@ -221,7 +219,7 @@ function init(self)
 			if list.over_item and list.over_item.data then
 				local data = list.over_item.data
 				richtext_autoscale(self, gui.get_node("tooltip_text"), string.gsub(
-					"Lv. {level} {name}\n<color={hpcolor}>HP: {hp}/{hpmax}</color>\n<color=red>Atk: {attack}  </color><color=purple>Mat: {magicattack}  </color><color=brown>Acc: {accuracy}</color>\n<color=teal><color=blue>Def: {defense}  </color>Mdf: {magicdefense}  </color><color=green>Eva: {evasion}</color>{acthint}", "%{(.-)%}", function(s)
+					"Lv. {level} {class}\n<color={hpcolor}>HP: {hp}/{hpmax}</color>\n<color=red>Atk: {attack}  </color><color=purple>Mat: {magicattack}  </color><color=brown>Acc: {accuracy}</color>\n<color=teal><color=blue>Def: {defense}  </color>Mdf: {magicdefense}  </color><color=green>Eva: {evasion}</color>{acthint}", "%{(.-)%}", function(s)
 					if s == "acthint" then
 						if data.enemy then
 							return "\n\nEnemy"
@@ -231,6 +229,12 @@ function init(self)
 							else
 								return "\n\nOut of actions"
 							end
+                        end
+                    elseif s == "class" and not data.class then
+						if data.enemy then
+                            return content.chars[data.id].name
+                        else
+							return "Human"
 						end
 					elseif s == "hpcolor" then
 						return string.format("%.2f,0,0,1", data.hp / data.hpmax:GetValue())
@@ -256,15 +260,17 @@ function init(self)
 			if self.skill_targets[list.selected_item.data] then
 				if list.selected_item.data == self.selected_target[1] then
 					self.press_confirmbutton({node = gui.get_node("confirmbutton")})
-				else
-					self.highlight_unchosen_target(self.selected_target[2])
+                else
+					for data, nodes in pairs(self.skill_targets) do
+						self.highlight_unchosen_target(nodes)
+					end
 					self.selected_target = {list.selected_item.data, list.selected_item.nodes}
 					self.highlight_chosen_target(list.selected_item.nodes)
 					if self.skill_selected.GetExDesc then
 						local exdesc, replacedesc = self.skill_selected:GetExDesc(self.selected_target[1])
 						richtext_autoscale(self, gui.get_node("tooltip_text"), replacedesc and exdesc or (self.skill_selected.desc .. "\n" .. exdesc))
 					end
-					sound.play("/sound#click")
+					msg.post("/sound", "play", {id = "click"})
 				end
 			end
 		else
@@ -272,7 +278,7 @@ function init(self)
 				self.deselect_skill()
 			end
 			if self.active_character ~= list.selected_item.data then
-				sound.play("/sound#click")
+				msg.post("/sound", "play", {id = "click"})
 				self.set_active_character(list.selected_item.data)
 			end
 		end
@@ -290,8 +296,7 @@ function init(self)
 	self.update_statuslist = function(list)
 		for i, item in ipairs(list.items) do
 			if item.data and item.data ~= "" then
-				if item.data.icon then
-					load_texture(self, item.data.icon)
+				if item.data.icon and load_texture(self, item.data.icon) then
 					gui.set_texture(item.nodes[hash "statusitem_image"], item.data.icon)
 					gui.set_color(item.nodes[hash "statusitem_image"], item.data.iconcolor or vmath.vector4(1))
 				end
@@ -327,6 +332,9 @@ function init(self)
 
 	self.highlight_unchosen_target = function(nodes, color)
 		color = color or ((self.active_character.enemy == self.selected_target[1].enemy) and gui_colors.charlist.highlight_ally or gui_colors.charlist.highlight_foe)
+		gui.cancel_animation(nodes[hash "charitem_btn"], gui.PROP_COLOR)
+		gui.cancel_animation(nodes[hash "charitem_pointer"], gui.PROP_COLOR)
+		gui.cancel_animation(nodes[hash "charitem_pointer"], gui.PROP_POSITION)
 		gui.set_color(nodes[hash "charitem_btn"], gui_colors.charlist.normal)
 		gui.animate(nodes[hash "charitem_btn"], gui.PROP_COLOR, color, gui.EASING_INOUTQUAD, 1, 0, nil, gui.PLAYBACK_LOOP_PINGPONG)
 		gui.set_visible(nodes[hash "charitem_pointer"], true)
@@ -376,7 +384,7 @@ function init(self)
 			end
 			monarch.back()
 		elseif self.skill_selected then
-			sound.play("/sound#click")
+			msg.post("/sound", "play", {id = "click"})
 			gui.set_color(button.node, gui_colors.confirmbutton.normal)
 			self.active_character.actions = self.active_character.actions - 1
 			if self.skill_selected.OnUse then
@@ -545,6 +553,7 @@ function init(self)
 			gui.set_alpha(gui.get_node("skillscroll_bg"), 0)
 		end
 		gooey.button("confirmbutton", action_id, action, self.press_confirmbutton, self.update_confirmbutton)
+		gooey.button("optionsbutton", action_id, action, pressed_options_dropdown_button, update_options_dropdown_button)
 	end
 
 	local charlist2_gui = gui.clone_tree(gui.get_node("charlist1_bg"))
@@ -569,9 +578,19 @@ function init(self)
 	for i, player in ipairs(Party) do
 		table.insert(self.char1_list, Battler(player))
     end
-	for i=1,4 do
-		local enemy = Battler("bun", true, Party[1].level)
-		table.insert(self.char2_list, enemy)
+	local disambig = {}
+	for i,id in ipairs(Encounter.enemy_ids) do
+		local enemy = Battler(id, true, Party[1].level) --not technically right, but there's no way to desync the party level currently
+        table.insert(self.char2_list, enemy)
+		if not disambig[enemy.name] then
+            disambig[enemy.name] = {enemy}
+        else
+			if #disambig[enemy.name] == 1 then
+				disambig[enemy.name][1].name = disambig[enemy.name][1].name .. " " .. 1
+            end
+			table.insert(disambig[enemy.name], true) --eh, we're not recalling the rest, just add junk
+			enemy.name = enemy.name .. " " .. #disambig[enemy.name]
+		end
 	end
 
 	self.start_turn()
@@ -680,13 +699,13 @@ function on_input(self, action_id, action)
 				if self.skill_button_selected then
 					self.deselect_skill(self.skill_button_selected)
 					richtext_autoscale(self, gui.get_node("tooltip_text"), "")
-					sound.play("/sound#woosh")
+					msg.post("/sound", "play", {id = "woosh"})
 					self:do_gooey()
 				elseif not self.get_character_controllable() then
 					for i, char in ipairs(self.char1_list) do
 						if self.get_character_controllable(char) then
 							self.set_active_character(char)
-							sound.play("/sound#woosh")
+							msg.post("/sound", "play", {id = "woosh"})
 							break
 						end
 					end

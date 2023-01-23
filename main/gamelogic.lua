@@ -1,25 +1,20 @@
 GL = {}
 
-GL.TARGET_SELF = hash"target_self"
-GL.TARGET_ALLY = hash"target_ally"
-GL.TARGET_ALLY_NOSELF = hash"target_ally_noself"
-GL.TARGET_FOE = hash"target_foe"
-
 local function target_func_common(user, target)
 	return target.hp > 0
 end
 
 GL.target_funcs = {
-	[GL.TARGET_SELF] = function (user, target)
+	target_self = function (user, target)
 		return user == target
 	end,
-	[GL.TARGET_ALLY] = function (user, target)
+	target_ally = function (user, target)
 		return user.enemy == target.enemy and target_func_common(user, target)
 	end,
-	[GL.TARGET_ALLY_NOSELF] = function (user, target)
+	target_ally_noself = function (user, target)
 		return user.enemy == target.enemy and user ~= target and target_func_common(user, target)
 	end,
-	[GL.TARGET_FOE] = function (user, target)
+	target_foe = function (user, target)
 		return user.enemy ~= target.enemy and target_func_common(user, target)
 	end,
 }

@@ -7,7 +7,7 @@ function init(self)
     end
 
     function self.pressed_newgame (button)
-        sound.play("/sound#click")
+        msg.post("/sound", "play", {id = "click"})
         if self.can_load and not self.showing_newgamewarning then
             gui.set_color(gui.get_node("newgamebutton_text"), vmath.vector4(.6,0,0,1))
             gui.set_alpha(gui.get_node("newgamewarning"), 1)
@@ -18,12 +18,12 @@ function init(self)
     end
 
     function self.pressed_loadgame (button)
-        sound.play("/sound#click")
+        msg.post("/sound", "play", {id = "click"})
         msg.post("/main", "load_game")
     end
 
     function self.pressed_quit (button)
-        sound.play("/sound#click")
+        msg.post("/sound", "play", {id = "click"})
         sys.exit(0)
     end
 
@@ -45,6 +45,7 @@ function on_input(self, action_id, action)
     if self.can_quit then
         gooey.button("quitbutton", action_id, action, self.pressed_quit, self.update_button)
     end
+    gooey.button("optionsbutton", action_id, action, pressed_options_dropdown_button, update_options_dropdown_button)
 end
 
 function on_message(self, message_id, message)

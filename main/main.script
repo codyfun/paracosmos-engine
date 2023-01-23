@@ -12,6 +12,7 @@ Player = require "main/classes/player"
 Battler = require "main/classes/battler"
 
 content = {}
+content.formulas = require"content/formulas"
 content.skills = require "content/skills"
 content.statuses = require "content/statuses"
 content.perks = require "content/perks"
@@ -19,19 +20,28 @@ content.chars = require "content/chars"
 
 RNG = {}
 
+Options = {}
 Party = {}
 Inventory = {}
+Encounter = {enemy_ids = {"bun", "bun", "bun", "bun",}}
 
 load_texture = function(self, path)
 	if not self.loaded_textures then self.loaded_textures = {} end
-	if not self.loaded_textures[path] then
-		local icon_file = io.open("content/images/" .. path .. ".png", "rb")
-		if icon_file then
-			local rawimg = image.load(icon_file:read("*all"))
-			gui.new_texture(path, rawimg.width, rawimg.height, rawimg.type, rawimg.buffer)
-			self.loaded_textures[path] = true
+    if not self.loaded_textures[path] then
+		local icon_data = sys.load_resource("/content/images/" .. path .. ".png") -- TODO: game.project:Custom Resources powers the HTML5 build. Remove when switching to Desktop mod support.
+		if not icon_data and (sys.get_sys_info().system_name ~= "HTML5") then
+            icon_file = io.open("content/images/" .. path .. ".png", "rb")
+			icon_data = icon_file:read("*a")
 			icon_file.close()
 		end
+		if icon_data then
+			local rawimg = image.load(icon_data)
+			gui.new_texture(path, rawimg.width, rawimg.height, rawimg.type, rawimg.buffer)
+            self.loaded_textures[path] = true
+			return true
+        end
+    else
+		return true
 	end
 end
 
@@ -84,21 +94,39 @@ richtext_autoscale = function(self, node, text, base_scale, base_width)
 	end
 end
 
+function update_options_dropdown_button(button)
+	if button.over_now then
+		gui.set_color(button.node, vmath.vector4(.9, .9, .85, 1))
+	end
+	if button.out_now then
+		gui.set_color(button.node, vmath.vector4(1, 1, 1, 1))
+	end
+end
+
+function pressed_options_dropdown_button(button)
+	msg.post("/sound", "play", {id = "click"})
+	if not monarch.is_visible("optionsdropdown") then
+		monarch.show("optionsdropdown", {no_stack = true})
+	end
+end
+
 function init(self)
     self.save_dir = sys.get_save_file("Paracosmos", "save")
-	self.save = sys.load(self.save_dir)
+    self.save = sys.load(self.save_dir)
+	
+    Options = sys.load(sys.get_save_file("Paracosmos", "options"))
 	
 	mapper.bind(triggers.KEY_SPACE, "confirm", 1)
 	mapper.bind(triggers.KEY_ENTER, "confirm", 1)
 	mapper.bind(triggers.KEY_ESC, "cancel", 1)
 	mapper.bind(triggers.MOUSE_BUTTON_RIGHT, "cancel", 1)
 
-	msg.post("#", "init_end")
+	msg.post("#", "main_menu")
 end
 
 function on_message(self, message_id, message, sender)
-	if message_id == hash "init_end" then
-        monarch.show(hash "mainmenu", nil, nil, function()
+	if message_id == hash "main_menu" then
+        monarch.show("mainmenu", {clear = true}, nil, function()
 			if self.save.Party then
 				monarch.post("mainmenu", "can_load")
 			end
@@ -109,12 +137,12 @@ function on_message(self, message_id, message, sender)
 		Party = {}
 		for i = 1, 3 do
 			table.insert(Party, Player("hero"))
-			Party[i].name = "Player " .. i
+			Party[i].name = ({"Alex", "Blake", "Cody", "Drew", "Evan"})[i]
 		end
 		Party[1]:AddPerk("skill_heal")
 		Party[2]:AddPerk("skill_buff_attack")
         Party[3]:AddPerk("stat_attack")
-		monarch.show(hash "loadouteditor")
+		monarch.show("loadouteditor")
 	elseif message_id == hash "load_game" then
 		RNG.world = require "main/rng"
 		RNG.world:setState(self.save.RNG.world)
@@ -135,7 +163,7 @@ function on_message(self, message_id, message, sender)
             Inventory[i] = table.deepcopy(content.perks[item.id])
 			Inventory[i].amount = item.amount
 		end
-		monarch.show(hash "loadouteditor")
+		monarch.show("loadouteditor")
 	elseif message_id == hash "save_game" then
         local Save = {Party = {}, Inventory = {}}
 		Save.RNG = {world = RNG.world:getState()}

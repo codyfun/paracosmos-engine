@@ -1,7 +1,7 @@
 # Controls
-WASD/Arrow keys to move, left and right click for other interactions.
+This game is mainly played with the mouse. Left click to select, right click to back out.
 
-Numbers 0-9 and Esc also supported as shortcuts, but not required to play.
+Numbers 0-9, Space, and Escape are also supported as shortcuts, but not required to play.
 
 ---
 
@@ -12,5 +12,6 @@ This prototype borrows a lot of gameplay elements from [TROUBLESHOOTER: Abandone
 	- Library: [Defold-Input](https://github.com/britzl/defold-input) [(MIT License)](https://github.com/britzl/defold-input/blob/master/LICENSE.md)
 	- Library: [Gooey](https://github.com/britzl/gooey) [(MIT License)](https://github.com/britzl/gooey/blob/master/LICENSE.md)
 	- Library: [Defold-RichText](https://github.com/britzl/defold-richtext) [(MIT License)](https://github.com/britzl/defold-richtext/blob/master/LICENSE.md)
+	- Library: [Monarch](https://github.com/britzl/monarch) [(MIT License)](https://github.com/britzl/monarch/blob/master/LICENSE.md)
 - Library: [rotLove](https://github.com/paulofmandown/rotLove) [(MIT License)](https://github.com/paulofmandown/rotLove/blob/master/LICENSE.txt)
 - Art: [Game-icons.net](https://game-icons.net/) [(CC BY 3.0 License)](https://creativecommons.org/licenses/by/3.0/)

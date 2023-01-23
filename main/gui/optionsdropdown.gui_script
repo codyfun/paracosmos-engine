@@ -1,0 +1,117 @@
+local gui_colors = {
+    checkbox = {
+        normal = vmath.vector4(1, 1, 1, 1),
+        hover_on = vmath.vector4(.85, .95, .85, 1),
+        hover_off = vmath.vector4(.95, .85, .85, 1),
+        checked = vmath.vector4(0, 1, 0, 1),
+        unchecked = vmath.vector4(1, 0, 0, 1),
+    },
+    quit_button = {
+        normal = vmath.vector4(1, .97, .97, 1),
+        hover = vmath.vector4(1, .87, .87, 1),
+        normal_warn = vmath.vector4(1, .92, .92, 1),
+        hover_warn = vmath.vector4(1, .8, .8, 1),
+    }
+}
+
+function init(self)
+    gooey.acquire_input()
+    
+    self.checkbox_data = {
+        [hash "option_mute"] = {
+            check_text_id = hash "option_mute_checked",
+            fn = function(change)
+                if change then
+                    Options.mute = not Options.mute
+                end
+                return Options.mute
+            end,
+        },
+        [hash "option_show_hotkeys"] = {
+            check_text_id = hash "option_show_hotkeys_checked",
+            fn = function(change)
+                if change then
+                    Options.show_hotkeys = not Options.show_hotkeys
+                end
+                return Options.show_hotkeys
+            end,
+        },
+    }
+    
+    function self.update_checkbox(checkbox)
+        local checked = self.checkbox_data[checkbox.node_id].fn()
+        if checkbox.over_now then
+            gui.set_color(checkbox.node, checked and gui_colors.checkbox.hover_on or gui_colors.checkbox.hover_off)
+        end
+        if checkbox.out_now then
+            gui.set_color(checkbox.node, gui_colors.checkbox.normal)
+        end
+        local check_text = gui.get_node(self.checkbox_data[checkbox.node_id].check_text_id)
+        if checked then
+            gui.set_text(check_text, "Y")
+            gui.set_color(check_text, gui_colors.checkbox.checked)
+        else
+            gui.set_text(check_text, "X")
+            gui.set_color(check_text, gui_colors.checkbox.unchecked)
+        end
+    end
+
+    function self.click_checkbox(checkbox)
+        self.interacted = true
+        msg.post("/sound", "play", {id = "click"})
+        local checked = self.checkbox_data[checkbox.node_id].fn(true)
+        gui.set_color(checkbox.node, checked and gui_colors.checkbox.hover_on or gui_colors.checkbox.hover_off)
+        local check_text = gui.get_node(self.checkbox_data[checkbox.node_id].check_text_id)
+        if checked then
+            gui.set_text(check_text, "O")
+            gui.set_color(check_text, gui_colors.checkbox.checked)
+        else
+            gui.set_text(check_text, "X")
+            gui.set_color(check_text, gui_colors.checkbox.unchecked)
+        end
+        sys.save(sys.get_save_file("Paracosmos", "options"), Options)
+    end
+    
+    function self.update_button(button)
+        if button.over then
+            gui.set_color(button.node, self.quit_warning and gui_colors.quit_button.hover_warn or gui_colors.quit_button.hover)
+        else
+            gui.set_color(button.node, self.quit_warning and gui_colors.quit_button.normal_warn or gui_colors.quit_button.normal)
+        end
+    end
+    
+    function self.pressed_button(button)
+        self.interacted = true
+        msg.post("/sound", "play", {id = "click"})
+        if self.quit_warning then
+            monarch.hide("optionsdropdown")
+            msg.post("/main", "main_menu")
+        else
+            self.quit_warning = true
+            gui.set_color(button.node, self.quit_warning and gui_colors.quit_button.hover_warn or gui_colors.quit_button.hover)
+            gui.set_text(gui.get_node("button_quit_text"), "Confirm Quit?")
+            gui.set_text(gui.get_node("button_quit_icon"), "!")
+            gui.set_position(gui.get_node("button_quit_icon"), vmath.vector3(10,0,0))
+        end
+    end
+    
+    if monarch.top() ~= hash"mainmenu" then
+        self.can_quit = true
+        gui.set_alpha(gui.get_node("button_quit"), 1)
+    end
+    
+    gooey.checkbox("option_mute", nil, nil, self.click_checkbox, self.update_checkbox)
+    gooey.checkbox("option_show_hotkeys", nil, nil, self.click_checkbox, self.update_checkbox)
+end
+
+function on_input(self, action_id, action)
+    self.interacted = false
+    gooey.checkbox("option_mute", action_id, action, self.click_checkbox, self.update_checkbox)
+    gooey.checkbox("option_show_hotkeys", action_id, action, self.click_checkbox, self.update_checkbox)
+    if self.can_quit then
+        gooey.button("button_quit", action_id, action, self.pressed_button, self.update_button)
+    end
+    if ((action_id == hash "touch" and action.released) or (mapper.on_input(action_id, 1) == "cancel")) and not self.interacted then
+        monarch.hide("optionsdropdown")
+    end
+end

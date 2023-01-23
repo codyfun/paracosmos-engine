@@ -6,7 +6,7 @@ local function SimpleStatBoost(data)
 			local stacks = self.stacks
 			self.stat_mod = {Apply = function(self, value) return math.round(value * (1 + 0.01 * stacks)) end}
 			self.user[data.stat_id]:AddMod(self.stat_mod)
-			self.desc = data.stat_name .. " increased by " .. self.stacks .. "%.\nLose 5% per turn."
+			self.desc = data.stat_name .. " increased by " .. self.stacks .. "%.\nGoes down by 5% per turn."
 		end,
 		OnTurnStart = function(self)
 			self.user[data.stat_id]:RemoveMod(self.stat_mod)
