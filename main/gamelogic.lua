@@ -19,16 +19,4 @@ GL.target_funcs = {
 	end,
 }
 
-local function get_value_or_self (self, k) return (type(self[k]) == "table") and self[k].GetValue and self[k]:GetValue() or self[k] end
-GL.GetExDesc_common = function (self, s, target)
-	if s == "low" then return self:power_func(target, 0)
-	elseif s == "high" then return self:power_func(target, 1) end
-	if string.sub(s, 1, 5) == "user." then
-		return get_value_or_self(self.user, string.sub(s, 6))
-	elseif string.sub(s, 1, 7) == "target." then
-		return get_value_or_self(target,string.sub(s, 8))
-	end
-	return get_value_or_self(self, s)
-end
-
 return GL

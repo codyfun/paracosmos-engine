@@ -78,6 +78,14 @@ if not table.copy then --check if already loaded
         end
 		return res
     end
+	
+	function table.count(t)
+		local res = 0
+		for k, v in pairs(t) do
+			res = res + 1
+		end
+		return res
+	end
 
 	function math.round(x)
 		return math.floor(x + 0.5)

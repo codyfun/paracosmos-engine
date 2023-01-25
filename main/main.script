@@ -118,6 +118,8 @@ function init(self)
 	
 	mapper.bind(triggers.KEY_SPACE, "confirm", 1)
 	mapper.bind(triggers.KEY_ENTER, "confirm", 1)
+	mapper.bind(triggers.KEY_TAB, "cycle", 1)
+	mapper.bind(triggers.KEY_BACKSPACE, "cancel", 1)
 	mapper.bind(triggers.KEY_ESC, "cancel", 1)
 	mapper.bind(triggers.MOUSE_BUTTON_RIGHT, "cancel", 1)
 

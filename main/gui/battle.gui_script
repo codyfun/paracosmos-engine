@@ -10,8 +10,10 @@ local gui_colors = {
 	charlist = {
 		normal = vmath.vector4(1, .90, .80, 1),
 		disabled = vmath.vector4(.8, .80, .80, 1),
-		highlight_foe = vmath.vector4(1, .75, .6, 1),
-		highlight_ally = vmath.vector4(.8, .95, .85, 1),
+		highlight_foe = vmath.vector4(1, .67, .53, 1),
+		highlight_ally = vmath.vector4(.75, 1, .88, 1),
+		semihighlight_foe = vmath.vector4(1, .82, .7, 1),
+		semihighlight_ally = vmath.vector4(.9, .92, .82, 1),
 		acttext = {
 			active = vmath.vector4(0, .6, 0, 1),
 			ready = vmath.vector4(.1, .1, .6, 1),
@@ -32,6 +34,7 @@ function init(self)
 	self.char1_list = {}
 	self.char2_list = {}
 	self.skill_targets = {}
+	self.skill_target_index = {}
 	self.turn_count = 0
 	self.enemy_turn = false
 	self.enemy_timer = math.huge
@@ -61,6 +64,13 @@ function init(self)
 					gui.set_color(item.nodes[hash "skillitem_image"], item.data.iconcolor or vmath.vector4(1))
 				else
 					gui.set_color(item.nodes[hash "skillitem_image"], vmath.vector4(0))
+                end
+				if Options.show_hotkeys and self.get_character_controllable() and not self.skill_selected and item.data.target and (item.index <= 10) then
+					gui.set_text(item.nodes["skillitem_hotkey"], "[" .. ((item.index ~= 10) and item.index or 0) .. "]")
+					gui.set_alpha(item.nodes["skillitem_hotkey_bg"], 0.7)
+				else
+					gui.set_text(item.nodes["skillitem_hotkey"], "")
+					gui.set_alpha(item.nodes["skillitem_hotkey_bg"], 0)
 				end
 				if self.skill_selected == item.data then
 					gui.set_color(button, (self.get_character_controllable() or self.enemy_turn) and gui_colors.skilllist.selected or gui_colors.skilllist.disabled_selected)
@@ -88,46 +98,46 @@ function init(self)
 
 	self.selected_skilllist = function(list)
 		if not list.selected_item.data then return end
-		local button = list.selected_item.nodes[hash "skillitem_btn"]
-		if self.skill_button_selected then
-			if self.skill_button_selected ~= button then --deselect previous skill when clicking new one
-				msg.post("/sound", "play", {id = "click"})
-				for data, nodes in pairs(self.skill_targets) do
-					self.unhighlight_target(nodes)
-				end
-				self.skill_targets = {}
-				gui.set_color(self.skill_button_selected, gui_colors.skilllist.normal)
-			else --click on selected skill to deselect
-				msg.post("/sound", "play", {id = "click"})
-				self.deselect_skill(self.skill_button_selected) --contains skill_targets clearing
-				return --do not fallthrough to selection
-			end
-		else
-			msg.post("/sound", "play", {id = "click"})
-		end
-		self.skill_button_selected = button
-		self.skill_selected = list.selected_item.data
-		self.selected_target = nil
 		local data = list.selected_item.data
-		richtext_autoscale(self, gui.get_node("tooltip_text"), data.desc)
-		if self.get_character_controllable() then
+		if self.get_character_controllable() and data.target then
+			local button = list.selected_item.nodes[hash "skillitem_btn"]
+			if self.skill_button_selected then
+				if self.skill_button_selected ~= button then --deselect previous skill when clicking new one
+					msg.post("/sound", "play", {id = "click"})
+					for data, nodes in pairs(self.skill_targets) do
+						self.unhighlight_target(nodes)
+					end
+                    self.skill_targets = {}
+					self.skill_target_index = {}
+					gui.set_color(self.skill_button_selected, gui_colors.skilllist.normal)
+				else --click again to confirm
+					self.press_confirmbutton({node = gui.get_node("confirmbutton")})
+					return --do not fallthrough to selection
+				end
+			else
+				msg.post("/sound", "play", {id = "click"})
+			end
+			self.skill_button_selected = button
+			self.skill_selected = list.selected_item.data
+            self.selected_target = nil
+			local skill_target_index = 1
+			richtext_autoscale(self, gui.get_node("tooltip_text"), data.desc)
 			gui.set_alpha(gui.get_node("confirmbutton"), 1)
-			if data.target then
-				for _, char_list in pairs {self.char_list1_gui, self.char_list2_gui} do
-					for i, char in pairs(char_list.items) do
-						if char.data and data.target(self.active_character, char.data) then
-							self.skill_targets[char.data] = char.nodes
-							local color = (self.active_character.enemy == char.data.enemy) and gui_colors.charlist.highlight_ally or gui_colors.charlist.highlight_foe
-							if not self.selected_target then
-								self.selected_target = {char.data, char.nodes}
-								self.highlight_chosen_target(char.nodes, color)
-								if data.GetExDesc then
-									local exdesc, replacedesc = data:GetExDesc(self.selected_target[1])
-									richtext_autoscale(self, gui.get_node("tooltip_text"), replacedesc and exdesc or (data.desc .. "\n" .. exdesc))
-								end
-							else
-								self.highlight_unchosen_target(char.nodes, color)
+			for _, char_list in pairs {self.char_list1_gui, self.char_list2_gui} do
+				for i, char in pairs(char_list.items) do
+					if char.data and data.target(self.active_character, char.data) then
+                        self.skill_targets[char.data] = char.nodes
+                        self.skill_target_index[char.data] = skill_target_index
+						skill_target_index = skill_target_index + 1
+						if not self.selected_target then
+							self.selected_target = {char.data, char.nodes}
+							self.highlight_chosen_target(char.nodes)
+							if data.GetExDesc then
+								local exdesc, replacedesc = data:GetExDesc(self.selected_target[1])
+								richtext_autoscale(self, gui.get_node("tooltip_text"), replacedesc and exdesc or (data.desc .. "\n" .. exdesc))
 							end
+						else
+							self.highlight_unchosen_target(char.nodes)
 						end
 					end
 				end
@@ -155,6 +165,7 @@ function init(self)
 			self.unhighlight_target(nodes)
 		end
 		self.skill_targets = {}
+		self.skill_target_index = {}
 	end
 
 	self.update_charlist1 = function(list)
@@ -173,8 +184,11 @@ function init(self)
 				gui.set_id(item.nodes[hash "statusitem"], "statusitem" .. which_list .. "_" .. item.index)
 				gui.set_id(item.nodes[hash "statusitem_image"], "statusitem_image")
 				gui.set_id(item.nodes[hash "statusitem_counter"], "statusitem_counter")
-				if not self.selected_target or item.data ~= self.selected_target[1] then
-					gui.set_color(item.nodes[hash "charitem_btn"], item.data.hp > 0 and gui_colors.charlist.normal or gui_colors.charlist.disabled)
+				if not self.selected_target then
+                    gui.set_color(item.nodes[hash "charitem_btn"], item.data.hp > 0 and gui_colors.charlist.normal or gui_colors.charlist.disabled)
+                elseif self.skill_targets[item.data] and item.data ~= self.selected_target[1] then
+					local color = ((self.active_character.enemy == self.selected_target[1].enemy) and gui_colors.charlist.semihighlight_ally or gui_colors.charlist.semihighlight_foe)
+					gui.set_color(item.nodes[hash "charitem_btn"], item.data.hp > 0 and color or gui_colors.charlist.disabled)
 				end
 				richtext_autoscale(self, item.nodes[hash "charitem_text"], item.data.name, 1, 200)
 				gui.set_scale(item.nodes[hash "charitem_hpbar"], vmath.vector3(item.data.hp / item.data.hpmax:GetValue(), 1, 1))
@@ -185,6 +199,14 @@ function init(self)
 					gui.set_color(item.nodes[hash "charitem_image"], item.data.iconcolor or vmath.vector4(1))
 				else
 					gui.set_color(item.nodes[hash "charitem_image"], vmath.vector4(0))
+                end
+				local skill_target_index = self.skill_target_index[item.data]
+				if Options.show_hotkeys and not self.enemy_turn and self.skill_selected and skill_target_index and (skill_target_index <= 10) then
+					gui.set_text(item.nodes["charitem_hotkey"], "[" .. ((skill_target_index ~= 10) and skill_target_index or 0) .. "]")
+					gui.set_alpha(item.nodes["charitem_hotkey_bg"], 0.7)
+				else
+					gui.set_text(item.nodes["charitem_hotkey"], "")
+					gui.set_alpha(item.nodes["charitem_hotkey_bg"], 0)
 				end
 				if self.enemy_turn then
 					if item.data == self.active_character then
@@ -318,37 +340,37 @@ function init(self)
 		end
 	end
 
-	self.highlight_chosen_target = function(nodes, color)
-		color = color or ((self.active_character.enemy == self.selected_target[1].enemy) and gui_colors.charlist.highlight_ally or gui_colors.charlist.highlight_foe)
+	self.highlight_chosen_target = function(nodes)
+		local semicolor = ((self.active_character.enemy == self.selected_target[1].enemy) and gui_colors.charlist.semihighlight_ally or gui_colors.charlist.semihighlight_foe)
+		local color = ((self.active_character.enemy == self.selected_target[1].enemy) and gui_colors.charlist.highlight_ally or gui_colors.charlist.highlight_foe)
 		gui.cancel_animation(nodes[hash "charitem_btn"], gui.PROP_COLOR)
-		gui.set_color(nodes[hash "charitem_btn"], color)
+		gui.set_color(nodes[hash "charitem_btn"], semicolor)
+		gui.animate(nodes[hash "charitem_btn"], gui.PROP_COLOR, color, gui.EASING_INOUTQUAD, 1, 0, nil, gui.PLAYBACK_LOOP_PINGPONG)
 		gui.set_visible(nodes[hash "charitem_pointer"], true)
 		gui.cancel_animation(nodes[hash "charitem_pointer"], gui.PROP_COLOR)
 		gui.cancel_animation(nodes[hash "charitem_pointer"], gui.PROP_POSITION)
 		gui.set_position(nodes[hash "charitem_pointer"], vmath.vector3(125, 0, 0))
 		gui.play_flipbook(nodes[hash "charitem_pointer"], "trianglebig")
-		gui.set_color(nodes[hash "charitem_pointer"], color)
-	end
-
-	self.highlight_unchosen_target = function(nodes, color)
-		color = color or ((self.active_character.enemy == self.selected_target[1].enemy) and gui_colors.charlist.highlight_ally or gui_colors.charlist.highlight_foe)
-		gui.cancel_animation(nodes[hash "charitem_btn"], gui.PROP_COLOR)
-		gui.cancel_animation(nodes[hash "charitem_pointer"], gui.PROP_COLOR)
-		gui.cancel_animation(nodes[hash "charitem_pointer"], gui.PROP_POSITION)
-		gui.set_color(nodes[hash "charitem_btn"], gui_colors.charlist.normal)
-		gui.animate(nodes[hash "charitem_btn"], gui.PROP_COLOR, color, gui.EASING_INOUTQUAD, 1, 0, nil, gui.PLAYBACK_LOOP_PINGPONG)
-		gui.set_visible(nodes[hash "charitem_pointer"], true)
-		gui.set_position(nodes[hash "charitem_pointer"], vmath.vector3(125, 0, 0))
-		gui.play_flipbook(nodes[hash "charitem_pointer"], "trianglesmall")
-		gui.set_color(nodes[hash "charitem_pointer"], gui_colors.charlist.normal)
+		gui.set_color(nodes[hash "charitem_pointer"], semicolor)
 		gui.animate(nodes[hash "charitem_pointer"], gui.PROP_COLOR, color, gui.EASING_INOUTQUAD, 1, 0, nil, gui.PLAYBACK_LOOP_PINGPONG)
 		gui.animate(nodes[hash "charitem_pointer"], gui.PROP_POSITION, vmath.vector3(119, 0, 0), gui.EASING_INOUTQUAD, 1.5, 0, nil, gui.PLAYBACK_LOOP_PINGPONG)
 	end
 
-	self.unhighlight_target = function(nodes, color)
-		color = color or gui_colors.charlist.normal
-		gui.cancel_animation(nodes[hash "charitem_btn"], gui.PROP_COLOR)
+	self.highlight_unchosen_target = function(nodes)
+		local color = ((self.active_character.enemy == self.selected_target[1].enemy) and gui_colors.charlist.semihighlight_ally or gui_colors.charlist.semihighlight_foe)
+        gui.cancel_animation(nodes[hash "charitem_btn"], gui.PROP_COLOR)
 		gui.set_color(nodes[hash "charitem_btn"], color)
+		gui.set_visible(nodes[hash "charitem_pointer"], true)
+		gui.cancel_animation(nodes[hash "charitem_pointer"], gui.PROP_COLOR)
+		gui.cancel_animation(nodes[hash "charitem_pointer"], gui.PROP_POSITION)
+		gui.set_position(nodes[hash "charitem_pointer"], vmath.vector3(125, 0, 0))
+		gui.play_flipbook(nodes[hash "charitem_pointer"], "trianglesmall")
+		gui.set_color(nodes[hash "charitem_pointer"], color)
+	end
+
+	self.unhighlight_target = function(nodes)
+		gui.cancel_animation(nodes[hash "charitem_btn"], gui.PROP_COLOR)
+		gui.set_color(nodes[hash "charitem_btn"], gui_colors.charlist.normal)
 		gui.set_visible(nodes[hash "charitem_pointer"], false)
 		gui.cancel_animation(nodes[hash "charitem_pointer"], gui.PROP_COLOR)
 		gui.cancel_animation(nodes[hash "charitem_pointer"], gui.PROP_POSITION)
@@ -572,6 +594,7 @@ function init(self)
 	gui.set_position(charlist2_gui[hash "charlist1_bg"], vmath.vector3(1027, 648, 0))
 	gui.set_position(charlist2_gui[hash "charitem_text"], vmath.vector3(-80, -22, 0))
 	gui.set_position(charlist2_gui[hash "charitem_image"], vmath.vector3(-80, -22, 0))
+	gui.set_position(charlist2_gui[hash "charitem_hotkey_bg"], vmath.vector3(-140, -9, 0))
 	gui.set_scale(charlist2_gui[hash "charitem_pointer_tf"], vmath.vector3(-1, 1, 1))
 	gui.move_above(gui.get_node("tooltip_bg"), gui.get_node("charlist2_bg"))
 
@@ -620,8 +643,8 @@ function update(self, dt)
 				self.skill_selected = chosen_move.data
 				local skill_targets = {}
 				if chosen_move.data.target then
-					for _, char_list in pairs {self.char_list1_gui, self.char_list2_gui} do
-						for i, char in pairs(char_list.items) do
+					for _, char_list in ipairs {self.char_list2_gui, self.char_list1_gui} do
+						for i, char in ipairs(char_list.items) do
 							if char.data and chosen_move.data.target(self.active_character, char.data) then
 								self.skill_targets[char.data] = char.nodes
 								table.insert(skill_targets, {char.data, char.nodes})
@@ -640,7 +663,7 @@ function update(self, dt)
 				self:do_gooey()
 				self.enemy_timer = 0
 			else
-				self.active_character.actions = self.active_character.actions - 1
+				self.active_character.actions = self.active_character.actions - (self.skill_selected.action_cost or 1)
 				if self.skill_selected.OnUse then
 					self.write_log(self.skill_selected:OnUse(self.selected_target[1]))
 				end
@@ -674,27 +697,104 @@ function on_input(self, action_id, action)
 				end
 				break
 			end
-		end
+        end
 	end
 	if self.enemy_turn then
 		if action.pressed then
 			if action_id == hash "touch" then
 				self.enemy_timer = math.huge
-			else
+            else
+                local keyboard_esc = (action_id == triggers.KEY_ESC)
 				action_id = mapper.on_input(action_id, 1)
-				if action_id == "confirm" then
-					self.enemy_timer = math.huge
-				elseif action_id == "cancel" then
+				if action_id == "cancel" and keyboard_esc then --escape = super cancel
 					self.skip_enemy_turn = true
+					msg.post("/sound", "play", {id = "woosh"})
+				elseif action_id == "cancel" or action_id == "confirm" then
+					self.enemy_timer = math.huge
+					msg.post("/sound", "play", {id = "woosh"})
 				end
 			end
 		end
 	else
 		self:do_gooey(action_id, action)
-		if action.pressed then
+        if action.pressed then
+			local num_pressed = ({
+				[hash "key_1"] = 1,
+				[hash "key_2"] = 2,
+				[hash "key_3"] = 3,
+				[hash "key_4"] = 4,
+				[hash "key_5"] = 5,
+				[hash "key_6"] = 6,
+				[hash "key_7"] = 7,
+				[hash "key_8"] = 8,
+				[hash "key_9"] = 9,
+				[hash "key_0"] = 10,
+				[hash "key_numpad_1"] = 1,
+				[hash "key_numpad_2"] = 2,
+				[hash "key_numpad_3"] = 3,
+				[hash "key_numpad_4"] = 4,
+				[hash "key_numpad_5"] = 5,
+				[hash "key_numpad_6"] = 6,
+				[hash "key_numpad_7"] = 7,
+				[hash "key_numpad_8"] = 8,
+				[hash "key_numpad_9"] = 9,
+				[hash "key_numpad_0"] = 10,
+			})[action_id]
+			if num_pressed then
+				if self.skill_selected then
+                    local target = table.find_if(self.skill_target_index, function(i) return i == num_pressed end)
+					if target then
+						if target.enemy then
+							self.char_list2_gui.scroll_to(0, 0)
+						else
+							self.char_list1_gui.scroll_to(0, 0)
+						end
+						self.selected_charlist({selected_item = {data = target, nodes = self.skill_targets[target]}})
+                    end
+                else
+					self.skill_list_gui.scroll_to(0, 0) --Scrolling to top isn't necessarily correct but don't need to fix until hotkeys actually use the rest of the list
+                    self.selected_skilllist({selected_item = self.skill_list_gui.items[num_pressed]})
+				end
+			end
 			action_id = mapper.on_input(action_id, 1)
 			if action_id == "confirm" then
-				self.press_confirmbutton({node = gui.get_node("confirmbutton")})
+                self.press_confirmbutton({node = gui.get_node("confirmbutton")})
+            elseif action_id == "cycle" then
+				if self.skill_selected then
+                    local i = self.skill_target_index[self.selected_target[1]] + 1
+					local next_target
+					if i > table.count(self.skill_target_index) then
+						i = 1
+                    end
+					local next_target = table.find_if(self.skill_target_index, function(j) return i == j end)
+					if next_target ~= self.selected_target[1] then
+						self.selected_charlist({selected_item = {data = next_target, nodes = self.skill_targets[next_target]}})
+					end
+				else
+					local this_char
+					local next_char
+					for i, char in ipairs(self.char1_list) do
+						if not this_char then
+							if self.active_character == char then
+								this_char = char
+							end
+						elseif self.get_character_controllable(char) then
+							next_char = char
+							break
+						end
+					end
+					if not next_char then
+						for i, char in ipairs(self.char1_list) do
+							if self.get_character_controllable(char) and self.active_character ~= char then
+								next_char = char
+								break
+							end
+						end
+					end
+					if next_char then
+						self.set_active_character(next_char)
+					end
+				end
 			elseif action_id == "cancel" then
 				if self.skill_button_selected then
 					self.deselect_skill(self.skill_button_selected)

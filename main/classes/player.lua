@@ -64,7 +64,7 @@ local Player_class = {
 			end
         elseif k == "xp" then
 			while v >= content.formulas.xpmax(object.level) do
-				v = content.formulas.xpmax(object.level)
+				v = v - content.formulas.xpmax(object.level)
 				object.level = object.level + 1
 			end
 			Player_data[object][k] = v

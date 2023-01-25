@@ -35,7 +35,7 @@ local chars = {
 		magicattack = 16,
 		magicdefense = 14,
 		accuracy = 16,
-		evasion = 24,
+		evasion = 20,
         skill_ids = {"attack"},
 		reward_xp = 15,
 	}

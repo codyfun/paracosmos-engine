@@ -1,7 +1,7 @@
 # Controls
 This game is mainly played with the mouse. Left click to select, right click to back out.
 
-Numbers 0-9, Space, and Escape are also supported as shortcuts, but not required to play.
+Numbers 0-9, Space/Enter, Tab, and Escape/Backspace are also supported as shortcuts, but not required to play.
 
 ---
 
