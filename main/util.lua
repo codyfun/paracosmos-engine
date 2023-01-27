@@ -85,6 +85,27 @@ if not table.copy then --check if already loaded
 			res = res + 1
 		end
 		return res
+    end
+	
+    function table.sane_call(t, idxs, ...) --safe nested index
+		if type(idxs) ~= "table" then
+			idxs = {idxs}
+		end
+		local parent
+		for _, idx in ipairs(idxs) do
+            if type(t) == "table" then
+				parent = t
+                t = t[idx]
+            elseif type(t) == "function" then
+                parent = t
+				t = t[idx](parent)
+			else
+				return nil
+			end
+        end
+		if t then
+			return t(parent, ...)
+		end
 	end
 
 	function math.round(x)

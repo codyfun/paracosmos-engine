@@ -1,15 +1,3 @@
-local function get_value_or_self(self, k) return (type(self[k]) == "table") and self[k].GetValue and self[k]:GetValue() or self[k] end
-local GetExDesc_common = function(self, s, target)
-	if s == "low" then return self:power_func(target, 0)
-	elseif s == "high" then return self:power_func(target, 1) end
-	if string.sub(s, 1, 5) == "user." then
-		return get_value_or_self(self.user, string.sub(s, 6))
-	elseif string.sub(s, 1, 7) == "target." then
-		return get_value_or_self(target, string.sub(s, 8))
-	end
-	return get_value_or_self(self, s)
-end
-
 local function SimpleAttackSkill(data)
 	return table.merge(data, {
 		target = GL.target_funcs.target_foe,
@@ -17,8 +5,8 @@ local function SimpleAttackSkill(data)
 			return math.round(self.power * self.user.attack:GetValue() / target.defense:GetValue() * (1 - self.variance + 2 * self.variance * variance))
 		end,
 		GetExDesc = function(self, target)
-			return string.gsub("Do <color=red>{low}-{high}</color> damage to {target.name}\n\n<color=red>Attack</color> vs. <color=blue>Defense</color> = {power}×<color=red>{user.attack}</color>÷<color=blue>{target.defense}</color><color=grey>±10%</color>", "%{(.-)%}", function(s)
-				return GetExDesc_common(self, s, target)
+			return string.gsub("Do <color=red>{power_range}</color> damage to {target.name}\n\n<color=red>Attack</color> vs. <color=blue>Defense</color> = {power}×<color=red>{user.attack}</color>÷<color=blue>{target.defense}</color><color=grey>±10%</color>", "%{(.-)%}", function(s)
+				return GL.FormatDescField(self, s, target)
 			end), true
 		end,
 		OnUse = function(self, target)
@@ -68,8 +56,8 @@ local skills = {
 			return math.round(self.power * self.user.magicattack:GetValue() * (1 - self.variance + 2 * self.variance * variance))
 		end,
 		GetExDesc = function(self, target)
-			return string.gsub("Restore <color=green>{low}-{high}</color> HP to {target.name}\n\n<color=purple>Magic Attack</color>: <color=purple>{user.magicattack}</color><color=grey>±10%</color>", "%{(.-)%}", function(s)
-				return GetExDesc_common(self, s, target)
+			return string.gsub("Restore <color=green>{power_range}</color> HP to {target.name}\n\n<color=purple>Magic Attack</color>: <color=purple>{user.magicattack}</color><color=grey>±10%</color>", "%{(.-)%}", function(s)
+				return GL.FormatDescField(self, s, target)
 			end), true
 		end,
 		OnUse = function(self, target)
@@ -83,12 +71,14 @@ local skills = {
 		name = "Flex",
 		icon = "icons/fist",
 		iconcolor = vmath.vector4(0.5, 0.7, 0.3, 1),
-		desc = "Boost an ally's attack.",
+		GetDesc = function(self)
+			return "Boost an ally's attack by " .. self.stacks .. "%."
+		end,
 		target = GL.target_funcs.target_ally,
 		stacks = 40,
 		OnUse = function(self, target)
-			target:AddStatus("buffed_attack", {stacks = self.stacks})
-			return string.format("%s buffs %s's attack to %s%%", self.user.name, target.name, self.stacks)
+			local status = target:AddStatus("buffed_attack", {stacks = self.stacks, min_stacks = self.stacks, max_stacks = self.stacks})
+			return string.format("%s buffs %s's attack to %s%%", self.user.name, target.name, status.stacks)
 		end,
 	},
 }

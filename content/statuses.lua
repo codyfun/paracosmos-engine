@@ -1,12 +1,20 @@
 local function SimpleStatBoost(data)
 	return table.merge(data, {
 		desc = data.stat_name .. " increased.",
-		stacks = 5,
-		OnApply = function(self)
+        stacks = 5,
+		UpdateEffect = function(self)
 			local stacks = self.stacks
-			self.stat_mod = {Apply = function(self, value) return math.round(value * (1 + 0.01 * stacks)) end}
+			self.stat_mod = {Apply = function(self, value) return math.round(value * GL.percent_to_float(stacks, true)) end}
 			self.user[data.stat_id]:AddMod(self.stat_mod)
 			self.desc = data.stat_name .. " increased by " .. self.stacks .. "%.\nGoes down by 5% per turn."
+		end,
+        OnApply = function(self)
+            local pre = self.user:GetStatus(self.id)
+			if pre then
+                self.stacks = math.clamp(self.stacks + pre.stacks, self.min_stacks or -math.huge, math.max(pre.stacks, self.max_stacks or math.huge))
+				self.user:RemoveStatus(pre)
+			end
+			self:UpdateEffect()
 		end,
 		OnTurnStart = function(self)
 			self.user[data.stat_id]:RemoveMod(self.stat_mod)
@@ -14,7 +22,7 @@ local function SimpleStatBoost(data)
 			if self.stacks <= 0 then
 				self.user:RemoveStatus(self)
 			else
-				self:OnApply()
+				self:UpdateEffect()
 			end
 		end,
 		OnRemove = function(self)

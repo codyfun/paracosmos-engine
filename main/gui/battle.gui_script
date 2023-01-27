@@ -85,7 +85,7 @@ function init(self)
 				gui.set_color(over_button, self.get_character_controllable() and gui_colors.skilllist.hover or gui_colors.skilllist.disabled_hover)
 			end
 			if not self.skill_selected and list.over_item.data then
-				richtext_autoscale(self, gui.get_node("tooltip_text"), list.over_item.data.desc)
+				richtext_autoscale(self, gui.get_node("tooltip_text"), GL.GetDesc(list.over_item.data))
 			end
 		end
 		if list.out_item_now and not self.skill_selected then
@@ -121,7 +121,7 @@ function init(self)
 			self.skill_selected = list.selected_item.data
             self.selected_target = nil
 			local skill_target_index = 1
-			richtext_autoscale(self, gui.get_node("tooltip_text"), data.desc)
+			richtext_autoscale(self, gui.get_node("tooltip_text"), GL.GetDesc(data))
 			gui.set_alpha(gui.get_node("confirmbutton"), 1)
 			for _, char_list in pairs {self.char_list1_gui, self.char_list2_gui} do
 				for i, char in pairs(char_list.items) do
@@ -134,7 +134,7 @@ function init(self)
 							self.highlight_chosen_target(char.nodes)
 							if data.GetExDesc then
 								local exdesc, replacedesc = data:GetExDesc(self.selected_target[1])
-								richtext_autoscale(self, gui.get_node("tooltip_text"), replacedesc and exdesc or (data.desc .. "\n" .. exdesc))
+								richtext_autoscale(self, gui.get_node("tooltip_text"), replacedesc and exdesc or (GL.GetDesc(data) .. "\n" .. exdesc))
 							end
 						else
 							self.highlight_unchosen_target(char.nodes)
@@ -261,7 +261,7 @@ function init(self)
 					elseif s == "hpcolor" then
 						return string.format("%.2f,0,0,1", data.hp / data.hpmax:GetValue())
 					end
-					return (type(data[s]) == "table") and data[s].GetValue and data[s]:GetValue() or data[s]
+					return GL.FormatDescField(data, s)
 				end), nil) --nil blocks second output from gsub
 			end
 			if list.out_item_now and list.out_item_now.data then
@@ -290,7 +290,7 @@ function init(self)
 					self.highlight_chosen_target(list.selected_item.nodes)
 					if self.skill_selected.GetExDesc then
 						local exdesc, replacedesc = self.skill_selected:GetExDesc(self.selected_target[1])
-						richtext_autoscale(self, gui.get_node("tooltip_text"), replacedesc and exdesc or (self.skill_selected.desc .. "\n" .. exdesc))
+						richtext_autoscale(self, gui.get_node("tooltip_text"), replacedesc and exdesc or (GL.GetDesc(self.skill_selected) .. "\n" .. exdesc))
 					end
 					msg.post("/sound", "play", {id = "click"})
 				end
@@ -335,7 +335,7 @@ function init(self)
 			local data = list.over_item.data
 			richtext_autoscale(self, gui.get_node("tooltip_text"), string.gsub(
 				"{name}\n{desc}", "%{(.-)%}", function(s)
-				return data and data[s]
+				return GL.FormatDescField(data, s)
 			end), nil)
 		end
 	end
@@ -637,7 +637,7 @@ function update(self, dt)
 					self.start_turn()
 					return
 				end
-				self:do_gooey()
+                self:do_gooey()
 				local chosen_move = self.skill_list_gui.items[RNG.battle:random(#self.active_character.skills)]
 				self.skill_button_selected = chosen_move.nodes[hash "skillitem_btn"]
 				self.skill_selected = chosen_move.data
@@ -651,14 +651,14 @@ function update(self, dt)
 							end
 						end
 					end
+					self.selected_target = skill_targets[RNG.battle:random(#skill_targets)]
+					self.highlight_chosen_target(self.selected_target[2])
 				end
-				self.selected_target = (skill_targets[RNG.battle:random(#skill_targets)])
-				self.highlight_chosen_target(self.selected_target[2])
 				if chosen_move.data.GetExDesc then
 					local exdesc, replacedesc = chosen_move.data:GetExDesc(self.selected_target[1])
-					richtext_autoscale(self, gui.get_node("tooltip_text"), replacedesc and exdesc or (chosen_move.data.desc .. "\n" .. exdesc))
+					richtext_autoscale(self, gui.get_node("tooltip_text"), replacedesc and exdesc or (GL.GetDesc(chosen_move.data) .. "\n" .. exdesc))
 				else
-					richtext_autoscale(self, gui.get_node("tooltip_text"), chosen_move.data.desc)
+					richtext_autoscale(self, gui.get_node("tooltip_text"), GL.GetDesc(chosen_move.data))
 				end
 				self:do_gooey()
 				self.enemy_timer = 0

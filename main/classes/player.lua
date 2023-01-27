@@ -14,7 +14,8 @@ function Player:AddPerk(perk)
 	self:RemovePerk(perk.id)
 	perk.user = self
 	if perk.OnEquip then perk:OnEquip() end
-	table.insert(self.perks, perk)
+    table.insert(self.perks, perk)
+	return perk
 end
 
 function Player:RemovePerk(perk)

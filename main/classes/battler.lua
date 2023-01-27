@@ -15,7 +15,8 @@ function Battler:AddStatus(status, data)
 	end
 	status.user = self
 	if status.OnApply then status:OnApply() end
-	table.insert(self.statuses, status)
+    table.insert(self.statuses, status)
+	return status
 end
 
 function Battler:GetStatus(status)
@@ -31,7 +32,8 @@ function Battler:RemoveStatus(status)
 		status = self:GetStatus(status)
 	end
 	if status.OnRemove then status:OnRemove() end
-	table.remove(self.statuses, table.find(self.statuses, status))
+    table.remove(self.statuses, table.find(self.statuses, status))
+	return status
 end
 
 local Battler_data = {}

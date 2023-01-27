@@ -57,7 +57,7 @@ function init(self)
                 gui.set_color(over_button, gui_colors.perklist.hover)
             end
             if not (self.perk_selected or self.storeperk_selected) and list.over_item.data then
-                richtext_autoscale(self, gui.get_node("tooltip_text"), list.over_item.data.desc)
+                richtext_autoscale(self, gui.get_node("tooltip_text"), GL.GetDesc(list.over_item.data))
             end
         end
         if list.out_item_now and not (self.perk_selected or self.storeperk_selected) then
@@ -91,7 +91,7 @@ function init(self)
             self.storeperk_selected = self.storeperk_list[storeperk_at]
             self.storeperk_button_selected = self.storeperk_list_gui.items[storeperk_at].nodes[hash "storeperkitem_btn"]
         end
-        richtext_autoscale(self, gui.get_node("tooltip_text"), list.selected_item.data.desc)
+        richtext_autoscale(self, gui.get_node("tooltip_text"), GL.GetDesc(list.selected_item.data))
         self:do_gooey()
     end
 
@@ -139,7 +139,7 @@ function init(self)
                 gui.set_color(over_button, gui_colors.perklist.hover)
             end
             if not (self.perk_selected or self.storeperk_selected) and list.over_item.data then
-                richtext_autoscale(self, gui.get_node("tooltip_text"), list.over_item.data.desc)
+                richtext_autoscale(self, gui.get_node("tooltip_text"), GL.GetDesc(list.over_item.data))
             end
         end
         if list.out_item_now and not (self.perk_selected or self.storeperk_selected) then
@@ -173,7 +173,7 @@ function init(self)
             self.perk_selected = self.perk_list[perk_at]
             self.perk_button_selected = self.perk_list_gui.items[perk_at].nodes[hash "perkitem_btn"]
         end
-        richtext_autoscale(self, gui.get_node("tooltip_text"), list.selected_item.data.desc)
+        richtext_autoscale(self, gui.get_node("tooltip_text"), GL.GetDesc(list.selected_item.data))
         self:do_gooey()
     end
 
@@ -209,7 +209,7 @@ function init(self)
                     if s == "class" and not self.selected_char[1].class then
                         return "Human"
                     end
-                    return (type(self.selected_char[1][s]) == "table") and self.selected_char[1][s].GetValue and self.selected_char[1][s]:GetValue() or self.selected_char[1][s]
+                return GL.FormatDescField(self.selected_char[1], s)
             end), nil) --nil blocks second output from gsub
         end
     end
