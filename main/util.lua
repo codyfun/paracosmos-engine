@@ -4,24 +4,24 @@ if not table.copy then --check if already loaded
 		return (not a and not b) or (a and b)
 	end
 
-	function table.copy(t, target)
-		local res = target or {}
+	function table.copy(t, out)
+		out = out or {}
 		for k, v in pairs(t) do
-			res[k] = v
+			out[k] = v
 		end
-		return res
+		return out
     end
 	
-	function table.deepcopy(t)
-		local res = {}
+	function table.deepcopy(t, out)
+		out = out or {}
         for k, v in pairs(t) do
 			if type(v) == "table" then
-				res[k] = table.deepcopy(v)
+                out[k] = table.deepcopy(v, out[k])
 			else
-				res[k] = v
+				out[k] = v
 			end
 		end
-		return res
+		return out
 	end
 
 	function table.find(t, v)
@@ -40,14 +40,32 @@ if not table.copy then --check if already loaded
 			end
 		end
 		return nil
+    end
+	
+	function table.match(t, fn)
+		local out = {}
+		for k, v in pairs(t) do
+			if fn(v) then
+				out[k] = v
+			end
+        end
+		return out
+    end
+	
+	function table.invert(t)
+		local out = {}
+		for k, v in pairs(t) do
+			out[v] = k
+        end
+		return out
 	end
 
 	function table.merge(t, t2)
-		local res = table.copy(t2)
+		local out = table.copy(t2)
 		for k, v in pairs(t) do
-			res[k] = v
+			out[k] = v
 		end
-		return res
+		return out
 	end
 
 	function table.remove_value(t, v)
@@ -64,27 +82,27 @@ if not table.copy then --check if already loaded
     end
 	
 	function table.map(t, fn)
-        local res = {}
+        local out = {}
 		for k,v in pairs(t) do
-			res[k] = fn(v)
+			out[k] = fn(v)
         end
-		return res
+		return out
     end
 	
     function table.keys(t)
-        local res = {}
+        local out = {}
 		for k,v in pairs(t) do
-			table.insert(res, k)
+			table.insert(out, k)
         end
-		return res
+		return out
     end
 	
 	function table.count(t)
-		local res = 0
+		local count = 0
 		for k, v in pairs(t) do
-			res = res + 1
+			count = count + 1
 		end
-		return res
+		return count
     end
 	
     function table.sane_call(t, idxs, ...) --safe nested index
@@ -112,8 +130,8 @@ if not table.copy then --check if already loaded
 		return math.floor(x + 0.5)
 	end
 
-	function math.clamp(x, min, max)
-		return math.min(math.max(x, min), max)
+	function math.clamp(x, min, max) --if min > max, return min
+		return math.max(math.min(x, max), min)
 	end
 
 end

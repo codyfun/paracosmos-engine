@@ -1,6 +1,5 @@
-local init_perk = function(user, perk_id, tier)
+local init_perk = function(user, perk_id)
 	local perk = table.deepcopy(content.perks[perk_id])
-	perk.tier = tier
 	perk.user = user
 	return perk
 end
@@ -9,10 +8,10 @@ local Player = {}
 
 function Player:AddPerk(perk)
 	if type(perk) == "string" then
-		perk = init_perk(self, perk, 1)
+        perk = init_perk(self, perk)
+    else
+		perk.user = self
 	end
-	self:RemovePerk(perk.id)
-	perk.user = self
 	if perk.OnEquip then perk:OnEquip() end
     table.insert(self.perks, perk)
 	return perk
@@ -37,7 +36,7 @@ end
 function Player:SumLevelsSpent()
 	local sum = 0
 	for i, perk in pairs(self.perks) do
-		sum = sum + perk.tier
+		sum = sum + (perk.cost or 1)
 	end
 	return sum
 end

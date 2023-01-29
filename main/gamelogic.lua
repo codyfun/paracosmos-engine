@@ -1,9 +1,6 @@
 GL = {}
 
-local function target_func_common(user, target)
-	return target.hp > 0
-end
-
+local function target_func_common(user, target) return target.hp > 0 end
 GL.target_funcs = {
 	target_self = function (user, target)
 		return user == target
@@ -19,7 +16,7 @@ GL.target_funcs = {
 	end,
 }
 
-function GL.float_to_percent(float, is_relative)
+function GL.float_to_percent(float, is_relative) --is_relative = do not include a base 100%
 	return (float - (is_relative and 1 or 0)) * 100
 end
 function GL.percent_to_float(percent, is_relative)

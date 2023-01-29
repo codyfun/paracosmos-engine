@@ -5,8 +5,10 @@ mapper = require "in.mapper"
 triggers = require "in.triggers"
 richtext = require "richtext.richtext"
 monarch = require "monarch.monarch"
+monarch.transitions = require "monarch.transitions.gui"
 
 ModStat = require "main/modstat"
+HookFunc = require "main/hookfunc"
 
 Player = require "main/classes/player"
 Battler = require "main/classes/battler"
@@ -18,14 +20,15 @@ content.statuses = require "content/statuses"
 content.perks = require "content/perks"
 content.chars = require "content/chars"
 
-RNG = {}
+Game = {}
+Game.RNG = {}
+Game.Options = {}
+Game.Party = {}
+Game.Inventory = {}
+Game.Encounter = {}
 
-Options = {}
-Party = {}
-Inventory = {}
-Encounter = {enemy_ids = {"bun", "bun", "bun", "bun",}}
-
-load_texture = function(self, path)
+Engine = {}
+function Engine.load_texture (self, path)
 	if not self.loaded_textures then self.loaded_textures = {} end
     if not self.loaded_textures[path] then
 		local icon_data = sys.load_resource("/content/images/" .. path .. ".png") -- TODO: game.project:Custom Resources powers the HTML5 build. Remove when switching to Desktop mod support.
@@ -44,8 +47,7 @@ load_texture = function(self, path)
 		return true
 	end
 end
-
-richtext_autoscale = function(self, node, text, base_scale, base_width)
+function Engine.richtext_autoscale (self, node, text, base_scale, base_width)
 	if not self.rich_text_nodes then self.rich_text_nodes = {} end
 	for i, old_data in pairs(self.rich_text_nodes) do
 		if old_data[1] == node then
@@ -94,7 +96,7 @@ richtext_autoscale = function(self, node, text, base_scale, base_width)
 	end
 end
 
-function update_options_dropdown_button(button)
+function Engine.update_options_dropdown_button(button)
 	if button.over_now then
 		gui.set_color(button.node, vmath.vector4(.9, .9, .85, 1))
 	end
@@ -103,7 +105,7 @@ function update_options_dropdown_button(button)
 	end
 end
 
-function pressed_options_dropdown_button(button)
+function Engine.pressed_options_dropdown_button(button)
 	msg.post("/sound", "play", {id = "click"})
 	if not monarch.is_visible("optionsdropdown") then
 		monarch.show("optionsdropdown", {no_stack = true})
@@ -114,7 +116,7 @@ function init(self)
     self.save_dir = sys.get_save_file("Paracosmos", "save")
     self.save = sys.load(self.save_dir)
 	
-    Options = sys.load(sys.get_save_file("Paracosmos", "options"))
+    Game.Options = sys.load(sys.get_save_file("Paracosmos", "options"))
 	
 	mapper.bind(triggers.KEY_SPACE, "confirm", 1)
 	mapper.bind(triggers.KEY_ENTER, "confirm", 1)
@@ -134,54 +136,50 @@ function on_message(self, message_id, message, sender)
 			end
 		end)
 	elseif message_id == hash "new_game" then
-		RNG.world = require "main/rng"
-		RNG.world:init()
-		Party = {}
+		Game.RNG.world = require "main/rng"
+		Game.RNG.world:init()
+		Game.Party = {}
 		for i = 1, 3 do
-			table.insert(Party, Player("hero"))
-			Party[i].name = ({"Alex", "Blake", "Cody", "Drew", "Evan"})[i]
+			table.insert(Game.Party, Player("hero"))
+			Game.Party[i].name = ({"Alex", "Blake", "Cody", "Drew", "Evan"})[i]
+			Game.Party[i].iconcolor = ({vmath.vector4(.0, .6, .6, 1), vmath.vector4(.6, 0, .6, 1), vmath.vector4(.6, .6, 0, 1), vmath.vector4(.4, .8, .4, 1), vmath.vector4(.8, .5, .3, 1)})[i]
 		end
-		Party[1]:AddPerk("skill_heal")
-		Party[2]:AddPerk("skill_buff_attack")
-        Party[3]:AddPerk("stat_attack")
+		Game.Party[1]:AddPerk("skill_heal")
+		Game.Party[2]:AddPerk("skill_buff_attack")
+        Game.Party[3]:AddPerk("stat_attack")
 		monarch.show("loadouteditor")
 	elseif message_id == hash "load_game" then
-		RNG.world = require "main/rng"
-		RNG.world:setState(self.save.RNG.world)
-        Party = {}
+		Game.RNG.world = require "main/rng"
+		Game.RNG.world:setState(self.save.RNG.world)
+        Game.Party = {}
 		for i, save_player in ipairs(self.save.Party) do
-            local player = Player("hero")
-			table.copy({
-				name = save_player.name,
-				xp = save_player.xp,
-				level = save_player.level,
-            }, player)
+			local player = Player("hero")
+			table.copy(save_player, player)
 			for i2,perk_id in ipairs(save_player.perk_ids) do
 				player:AddPerk(perk_id)
 			end
-            Party[i] = player
+            Game.Party[i] = player
 		end
 		for i, item in ipairs(self.save.Inventory) do
-            Inventory[i] = table.deepcopy(content.perks[item.id])
-			Inventory[i].amount = item.amount
+            Game.Inventory[i] = table.deepcopy(content.perks[item.id])
+			Game.Inventory[i].amount = item.amount
 		end
 		monarch.show("loadouteditor")
 	elseif message_id == hash "save_game" then
         local Save = {Party = {}, Inventory = {}}
-		Save.RNG = {world = RNG.world:getState()}
-        for i, player in ipairs(Party) do
-			local save_player = {
-                name = player.name,
-                xp = player.xp,
-				level = player.level,
-            }
+		Save.RNG = {world = Game.RNG.world:getState()}
+        for i, player in ipairs(Game.Party) do
+			local save_player = {}
+			for i2, k in pairs{"name", "icon", "iconcolor", "xp", "level"} do
+				save_player[k] = player[k]
+			end
 			save_player.perk_ids = {}
 			for i2,perk in ipairs(player.perks) do
 				save_player.perk_ids[i2] = perk.id
 			end
 			Save.Party[i] = save_player
         end
-		for i,item in ipairs(Inventory) do
+		for i,item in ipairs(Game.Inventory) do
             Save.Inventory[i] = {
                 id = item.id,
 				amount = item.amount,

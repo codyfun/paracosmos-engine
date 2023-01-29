@@ -7,10 +7,10 @@ local function SimpleAttackSkill(data)
 		GetExDesc = function(self, target)
 			return string.gsub("Do <color=red>{power_range}</color> damage to {target.name}\n\n<color=red>Attack</color> vs. <color=blue>Defense</color> = {power}×<color=red>{user.attack}</color>÷<color=blue>{target.defense}</color><color=grey>±10%</color>", "%{(.-)%}", function(s)
 				return GL.FormatDescField(self, s, target)
-			end), true
+			end), "replace"
 		end,
 		OnUse = function(self, target)
-			local damage = self:power_func(target, RNG.battle:random())
+			local damage = self:power_func(target, Game.RNG.battle:random())
 			target.hp = target.hp - damage
 			return string.format("%s does %d damage to %s", self.user.name, damage, target.name)
 		end,
@@ -30,8 +30,11 @@ local skills = {
 		name = "Defend",
 		icon = "icons/shield",
 		iconcolor = vmath.vector4(0.0, 0, 0.5, 1),
-		desc = "Double your Defense and Magic Defense this turn.",
+		GetDesc = function(self)
+			return "Gain " .. GL.float_to_percent(self.def_mult) .. "% Defense and Magic Defense this turn."
+		end,
 		target = GL.target_funcs.target_self,
+		def_mult = 2,
 		OnUse = function(self, target)
 			self.user:AddStatus("defending")
 			return string.format("%s defends", self.user.name)
@@ -58,10 +61,10 @@ local skills = {
 		GetExDesc = function(self, target)
 			return string.gsub("Restore <color=green>{power_range}</color> HP to {target.name}\n\n<color=purple>Magic Attack</color>: <color=purple>{user.magicattack}</color><color=grey>±10%</color>", "%{(.-)%}", function(s)
 				return GL.FormatDescField(self, s, target)
-			end), true
+			end), "replace"
 		end,
 		OnUse = function(self, target)
-			local healing = self:power_func(target, RNG.battle:random())
+			local healing = self:power_func(target, Game.RNG.battle:random())
 			local prehp = target.hp
 			target.hp = target.hp + healing
 			return string.format("%s restores %d HP to %s", self.user.name, target.hp - prehp, target.name)

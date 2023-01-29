@@ -1,16 +1,18 @@
 local function SimpleStatBoost(data)
 	return table.merge(data, {
-		desc = data.stat_name .. " increased.",
+        GetDesc = function(self)
+			return data.stat_name .. " increased by " .. self.stacks .. "%.\nGoes down by " .. self.stack_decay .. "% per turn."
+		end,
         stacks = 5,
+		stack_decay = 5,
 		UpdateEffect = function(self)
 			local stacks = self.stacks
-			self.stat_mod = {Apply = function(self, value) return math.round(value * GL.percent_to_float(stacks, true)) end}
+			self.stat_mod = {Apply = function(self, value) return math.round(value * GL.percent_to_float(stacks, "relative")) end}
 			self.user[data.stat_id]:AddMod(self.stat_mod)
-			self.desc = data.stat_name .. " increased by " .. self.stacks .. "%.\nGoes down by 5% per turn."
 		end,
         OnApply = function(self)
             local pre = self.user:GetStatus(self.id)
-			if pre then
+			if pre then --combine with previous, or do nothing if max_stacks is less than previous
                 self.stacks = math.clamp(self.stacks + pre.stacks, self.min_stacks or -math.huge, math.max(pre.stacks, self.max_stacks or math.huge))
 				self.user:RemoveStatus(pre)
 			end
@@ -36,9 +38,13 @@ local statuses = {
 		name = "Defending",
 		icon = "icons/shield",
 		iconcolor = vmath.vector4(0.3, 0.3, 1, 1),
-		desc = "200% Defense and Magic Defense for 1 turn.",
-		stat_mod = {Apply = function(self, value) return value * 2 end},
-		OnApply = function(self)
+		GetDesc = function(self)
+			return GL.float_to_percent(self.def_mult) .. "% Defense and Magic Defense for 1 turn."
+        end,
+		def_mult = 2,
+        OnApply = function(self)
+			local def_mult = self.def_mult
+			self.stat_mod = {Apply = function(self, value) return value * def_mult end}
 			self.user.defense:AddMod(self.stat_mod)
 			self.user.magicdefense:AddMod(self.stat_mod)
 		end,
@@ -56,7 +62,11 @@ local statuses = {
 	buffed_magicattack = SimpleStatBoost {name = "Magic Attack Up", stat_id = "magicattack", stat_name = "Magic Attack"},
 	buffed_magicdefense = SimpleStatBoost {name = "Magic Defense Up", stat_id = "magicdefense", stat_name = "Magic Defense"},
 	buffed_accuracy = SimpleStatBoost {name = "Accuracy Up", stat_id = "accuracy", stat_name = "Accuracy"},
-	buffed_evasion = SimpleStatBoost {name = "Evasion Up", stat_id = "evasion", stat_name = "Evasion"},
+    buffed_evasion = SimpleStatBoost {name = "Evasion Up", stat_id = "evasion", stat_name = "Evasion"},
+    haste = {
+        name = "Haste",
+		desc = "Get another action this turn.",
+	}
 }
 for k, v in pairs(statuses) do
 	v.id = k

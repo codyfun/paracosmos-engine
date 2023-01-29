@@ -5,6 +5,14 @@ function init(self)
         msg.post("/sound", "play", {id = "click"})
         monarch.back()
     end
+    
+    function self.pressed_fight(button)
+        Game.Encounter.enemy_ids = ({[hash "newgamebutton"] = {"bun", "bun", "bun", "bun", "bun"},
+            [hash "newgamebutton1"] = {"dog", "dog", "dog",},
+            [hash "newgamebutton2"] = {"dolphin"},
+        })[gui.get_id(button.node)]
+        monarch.replace("battle")
+    end
 
     function self.update_button(button)
         if button.over_now then
@@ -17,6 +25,9 @@ function init(self)
 end
 
 function on_input(self, action_id, action)
+    gooey.button("newgamebutton", action_id, action, self.pressed_fight, self.update_button)
+    gooey.button("newgamebutton1", action_id, action, self.pressed_fight, self.update_button)
+    gooey.button("newgamebutton2", action_id, action, self.pressed_fight, self.update_button)
     gooey.button("backbutton", action_id, action, self.pressed_back, self.update_button)
     gooey.button("optionsbutton", action_id, action, Engine.pressed_options_dropdown_button, Engine.update_options_dropdown_button)
 end

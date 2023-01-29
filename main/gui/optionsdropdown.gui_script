@@ -17,23 +17,29 @@ local gui_colors = {
 function init(self)
     gooey.acquire_input()
     
+    self.transition = monarch.transitions.create(gui.get_node("root"))
+        .show_in(function(node, to, easing, duration, delay, cb)
+            gui.set_scale(node, vmath.vector3(1,0,1))
+            gui.animate(node, gui.PROP_SCALE, to.scale, easing, duration, delay, cb)
+        end, gui.EASING_OUTQUAD, 0.12, 0)
+    
     self.checkbox_data = {
         [hash "option_mute"] = {
             check_text_id = hash "option_mute_checked",
             fn = function(change)
                 if change then
-                    Options.mute = not Options.mute
+                    Game.Options.mute = not Game.Options.mute
                 end
-                return Options.mute
+                return Game.Options.mute
             end,
         },
         [hash "option_show_hotkeys"] = {
             check_text_id = hash "option_show_hotkeys_checked",
             fn = function(change)
                 if change then
-                    Options.show_hotkeys = not Options.show_hotkeys
+                    Game.Options.show_hotkeys = not Game.Options.show_hotkeys
                 end
-                return Options.show_hotkeys
+                return Game.Options.show_hotkeys
             end,
         },
     }
@@ -69,7 +75,7 @@ function init(self)
             gui.set_text(check_text, "X")
             gui.set_color(check_text, gui_colors.checkbox.unchecked)
         end
-        sys.save(sys.get_save_file("Paracosmos", "options"), Options)
+        sys.save(sys.get_save_file("Paracosmos", "options"), Game.Options)
     end
     
     function self.update_button(button)
@@ -114,4 +120,8 @@ function on_input(self, action_id, action)
     if ((action_id == hash "touch" and action.released) or (mapper.on_input(action_id, 1) == "cancel")) and not self.interacted then
         monarch.hide("optionsdropdown")
     end
+end
+
+function on_message(self, message_id, message, sender)
+    self.transition.handle(message_id, message, sender)
 end

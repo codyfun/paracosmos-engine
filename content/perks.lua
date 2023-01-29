@@ -16,9 +16,11 @@ end
 
 local function SimpleSkillPerk(data)
 	local skill_id = data.skill_id
-	return table.merge(data, {
+    return table.merge(data, {
+        icon = data.icon,
+		icon_color = data.icon_color,
 		GetDesc = function(self)
-			return "Lets you use \"" .. content.skills[skill_id].name .. "\":\n" .. (table.sane_call(content.skills, {skill_id, "GetDesc"}, content.skills[skill_id]) or content.skills[skill_id].desc), true
+			return "Lets you use \"" .. content.skills[skill_id].name .. "\":\n" .. (table.sane_call(content.skills[skill_id], "GetDesc") or content.skills[skill_id].desc)
 		end,
         cost = 1,
 		OnEquip = function(self)
@@ -38,8 +40,15 @@ local perks = {
 	stat_magicdefense = SimpleStatPerk {name = "Resistance+", stat_id = "magicdefense", stat_name = "Magic Defense", multiplier = 1.15},
 	stat_accuracy = SimpleStatPerk {name = "Aim+", stat_id = "accuracy", stat_name = "Accuracy", multiplier = 1.15},
 	stat_evasion = SimpleStatPerk {name = "Dodge+", stat_id = "evasion", stat_name = "Evasion", multiplier = 1.15},
-	skill_heal = SimpleSkillPerk {name = "Heal", skill_id = "heal"},
-	skill_buff_attack = SimpleSkillPerk {name = "Flex", skill_id = "buff_attack"},
+	skill_heal = SimpleSkillPerk {name = "Heal", icon = "icons/health-normal",
+		iconcolor = vmath.vector4(0.0, 0.5, 0, 1), skill_id = "heal"},
+	skill_buff_attack = SimpleSkillPerk {name = "Flex", icon = "icons/fist",
+        iconcolor = vmath.vector4(0.5, 0.7, 0.3, 1), skill_id = "buff_attack",},
+    double_actions = {
+        name = "Veteran Agility",
+        desc = "Gain an additional action every turn.",
+		
+	},
 }
 for k, v in pairs(perks) do
 	v.id = k
