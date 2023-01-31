@@ -63,8 +63,8 @@ local Player_class = {
 				object[stat]:AddMod(Player_data[object].level_mod)
 			end
         elseif k == "xp" then
-			while v >= content.formulas.xpmax(object.level) do
-				v = v - content.formulas.xpmax(object.level)
+			while v >= content.formulas.xpscaling(object.level) * 100 do
+				v = v - content.formulas.xpscaling(object.level) * 100
 				object.level = object.level + 1
 			end
 			Player_data[object][k] = v
@@ -83,9 +83,10 @@ setmetatable(Player_class, {
 		for _, stat in pairs {"hpmax", "attack", "defense", "magicattack", "magicdefense", "accuracy", "evasion"} do
 			object[stat] = ModStat(object[stat])
 		end
-		object.level = 1
+		object.level = 0
 		object.xp = 0
-		object.perks = {}
+        object.perks = {}
+		object.skill_slots = {attack = 3, support = 3}
 		return object
 	end,
 })

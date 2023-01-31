@@ -1,8 +1,7 @@
-if not table.copy then --check if already loaded
-
-	function xor(a, b)
-		return (not a and not b) or (a and b)
-	end
+if not array then --check if already loaded
+	
+    array = {}
+	bool = {}
 
 	function table.copy(t, out)
 		out = out or {}
@@ -11,6 +10,14 @@ if not table.copy then --check if already loaded
 		end
 		return out
     end
+	
+	function array.copy(t, out)
+		out = out or {}
+		for i, v in ipairs(t) do
+			table.insert(out, v)
+		end
+		return out
+	end
 	
 	function table.deepcopy(t, out)
 		out = out or {}
@@ -52,19 +59,30 @@ if not table.copy then --check if already loaded
 		return out
     end
 	
+	function array.match(t, fn)
+		local out = {}
+		for i, v in ipairs(t) do
+			if fn(v) then
+				table.insert(out, v)
+			end
+		end
+		return out
+	end
+	
 	function table.invert(t)
 		local out = {}
 		for k, v in pairs(t) do
 			out[v] = k
         end
 		return out
-	end
-
-	function table.merge(t, t2)
-		local out = table.copy(t2)
-		for k, v in pairs(t) do
-			out[k] = v
-		end
+    end
+	
+	function array.reverse(t)
+        local out = {}
+		local size = #t
+		for i, v in ipairs(t) do
+			out[size - i + 1] = v
+        end
 		return out
 	end
 
@@ -132,6 +150,14 @@ if not table.copy then --check if already loaded
 
 	function math.clamp(x, min, max) --if min > max, return min
 		return math.max(math.min(x, max), min)
+	end
+
+	function bool.xor(a, b)
+		return (not a and not b) or (a and b)
+	end
+	
+	function string.firstupper(s)
+		return (s:gsub("^%l", string.upper))
 	end
 
 end

@@ -1,7 +1,7 @@
 local function SimpleStatPerk(data)
     local multiplier = data.multiplier
 	local mult_display = (multiplier-1)*100
-	return table.merge(data, {
+	return table.copy(data, {
 		desc = "Increases your base " .. data.stat_name .. " by " .. mult_display .. "%.",
         cost = 1,
 		OnEquip = function(self)
@@ -16,13 +16,13 @@ end
 
 local function SimpleSkillPerk(data)
 	local skill_id = data.skill_id
-    return table.merge(data, {
+    return table.copy(data, {
         icon = data.icon,
 		icon_color = data.icon_color,
 		GetDesc = function(self)
-			return "Lets you use \"" .. content.skills[skill_id].name .. "\":\n" .. (table.sane_call(content.skills[skill_id], "GetDesc") or content.skills[skill_id].desc)
+			return "Lets you use \"" .. content.skills[skill_id].name .. "\":\n" .. GL.GetDesc(content.skills[skill_id]) .. "\nFills a " .. string.firstupper(data.skill_type) .. " skill slot."
 		end,
-        cost = 1,
+        cost = 0,
 		OnEquip = function(self)
 			table.insert(self.user.skill_ids, skill_id)
 		end,
@@ -41,14 +41,25 @@ local perks = {
 	stat_accuracy = SimpleStatPerk {name = "Aim+", stat_id = "accuracy", stat_name = "Accuracy", multiplier = 1.15},
 	stat_evasion = SimpleStatPerk {name = "Dodge+", stat_id = "evasion", stat_name = "Evasion", multiplier = 1.15},
 	skill_heal = SimpleSkillPerk {name = "Heal", icon = "icons/health-normal",
-		iconcolor = vmath.vector4(0.0, 0.5, 0, 1), skill_id = "heal"},
-	skill_buff_attack = SimpleSkillPerk {name = "Flex", icon = "icons/fist",
-        iconcolor = vmath.vector4(0.5, 0.7, 0.3, 1), skill_id = "buff_attack",},
-    double_actions = {
-        name = "Veteran Agility",
-        desc = "Gain an additional action every turn.",
-		
+        iconcolor = vmath.vector4(0.0, 0.5, 0, 1), skill_id = "heal",
+		skill_type = "support",
 	},
+	skill_buff_attack = SimpleSkillPerk {name = "Flex", icon = "icons/fist",
+		iconcolor = vmath.vector4(0.5, 0.7, 0.3, 1), skill_id = "buff_attack",
+		skill_type = "support",},
+    double_actions = {
+        name = "Veteran Prowess",
+		desc = "Gain an additional action every turn.",
+		OnTurnStart = function(self)
+			self.user.actions = self.user.actions + 1
+		end,
+		CanDrop = function(self) return false end,
+	},
+    stat_hp2 = SimpleStatPerk {name = "Health+ 2", stat_id = "hpmax", stat_name = "Max HP", multiplier = 1.13,
+		desc = "Increase health by 15% more, requires Health+",
+		CanEquip = function(self, user)
+			return table.find_if(user.perks, function (perk) return perk.id == "stat_hp" end)
+		end},
 }
 for k, v in pairs(perks) do
 	v.id = k

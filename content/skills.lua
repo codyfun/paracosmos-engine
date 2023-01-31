@@ -1,5 +1,5 @@
 local function SimpleAttackSkill(data)
-	return table.merge(data, {
+	return table.copy(data, {
 		target = GL.target_funcs.target_foe,
 		power_func = function(self, target, variance)
 			return math.round(self.power * self.user.attack:GetValue() / target.defense:GetValue() * (1 - self.variance + 2 * self.variance * variance))

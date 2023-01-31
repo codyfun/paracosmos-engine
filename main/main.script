@@ -146,7 +146,7 @@ function on_message(self, message_id, message, sender)
 		end
 		Game.Party[1]:AddPerk("skill_heal")
 		Game.Party[2]:AddPerk("skill_buff_attack")
-        Game.Party[3]:AddPerk("stat_attack")
+		Game.Inventory = {}
 		monarch.show("loadouteditor")
 	elseif message_id == hash "load_game" then
 		Game.RNG.world = require "main/rng"

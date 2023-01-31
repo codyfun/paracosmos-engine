@@ -429,6 +429,26 @@ function init(self)
 			end
 		end
 		self:do_gooey()
+    end
+	
+	local drop_loot = function(char)
+		self.rewardpool.xp = self.rewardpool.xp + char.reward_xp * content.formulas.xpscaling(char.level)
+		local drop_roll = Game.RNG.world:random(100)
+        if drop_roll < char.reward_xp then
+            local drop_table = array.match(char.perks, function(perk)
+                return (not perk.CanDrop) or (perk:CanDrop())
+			end)
+			if #drop_table > 0 then
+				local drop = drop_table[Game.RNG.world:random(#drop_table)]
+				local drop_at = table.find_if(self.rewardpool.drops, function(exist_drop) return drop.id == exist_drop.id end)
+				if drop_at then
+					self.rewardpool.drops[drop_at].amount = self.rewardpool.drops[drop_at].amount + 1
+				else
+					table.insert(self.rewardpool.drops, table.deepcopy(content.perks[drop.id]))
+					self.rewardpool.drops[#self.rewardpool.drops].amount = 1
+				end
+			end
+		end
 	end
 
 	self.check_objectives = function()
@@ -442,16 +462,7 @@ function init(self)
 					self.write_log(string.format("%s is defeated", char.name))
 					if not char.significant then
                         cleanup_and_repeat = true
-                        self.rewardpool.xp = self.rewardpool.xp + char.reward_xp * char.level * 1.1 ^ (char.level - 1)
-						local drop_choices = table.keys(content.perks)
-                        local drop_id = drop_choices[Game.RNG.world:random(#drop_choices)]
-						local drop_at = table.find_if(self.rewardpool.drops, function(exist_drop) return drop_id == exist_drop.id end)
-						if drop_at then
-							self.rewardpool.drops[drop_at].amount = self.rewardpool.drops[drop_at].amount + 1
-                        else
-                            table.insert(self.rewardpool.drops, table.deepcopy(content.perks[drop_id]))
-							self.rewardpool.drops[#self.rewardpool.drops].amount = 1
-						end
+                        drop_loot(char)
 					else
 						char.dead = true
 					end
@@ -467,16 +478,7 @@ function init(self)
 		end
 		if all_foes_defeated then
 			for i2, char in ipairs(self.char2_list) do
-				self.rewardpool.xp = self.rewardpool.xp + char.reward_xp * char.level * 1.1 ^ (char.level - 1)
-				local drop_choices = table.keys(content.perks)
-				local drop_id = drop_choices[Game.RNG.world:random(#drop_choices)]
-				local drop_at = table.find_if(self.rewardpool.drops, function(exist_drop) return drop_id == exist_drop.id end)
-				if drop_at then
-					self.rewardpool.drops[drop_at].amount = self.rewardpool.drops[drop_at].amount + 1
-				else
-					table.insert(self.rewardpool.drops, table.deepcopy(content.perks[drop_id]))
-					self.rewardpool.drops[#self.rewardpool.drops].amount = 1
-				end
+				drop_loot(char)
 			end
             self.write_log("You win!")
 			if self.rewardpool.xp > 0 then
@@ -535,6 +537,11 @@ function init(self)
 		gui.set_text(gui.get_node("turninfo_text"), string.format(enemy_turn and "Enemy Turn %d" or "Player Turn %d", self.turn_count))
 		for i, char in ipairs(enemy_turn and self.char2_list or self.char1_list) do
 			char.actions = 1
+			for i2, perk in ipairs(char.perks) do
+				if perk.OnTurnStart then
+					perk:OnTurnStart()
+				end
+			end
 			for i2, status in ipairs(char.statuses) do
 				if status.OnTurnStart then
 					status:OnTurnStart()
@@ -641,21 +648,31 @@ function update(self, dt)
 	if self.enemy_turn and not self.battle_ended then
 		self.enemy_timer = self.enemy_timer + dt
 		if self.enemy_timer > enemy_move_preview_time or self.skip_enemy_turn then
-			if not self.get_character_controllable(self.active_character, true) then
-				local next_character_available = false
-				for i, char in ipairs(self.char2_list) do
-					if self.get_character_controllable(char, true) then
-						self.set_active_character(char)
-						next_character_available = true
-						break
+			if self.skill_selected then
+				self.active_character.actions = self.active_character.actions - (self.skill_selected.action_cost or 1)
+				if self.skill_selected.OnUse then
+					self.write_log(self.skill_selected:OnUse(self.selected_target[1]))
+				end
+				self.deselect_skill()
+				self.check_objectives()
+				self:do_gooey()
+			else
+				if not self.get_character_controllable(self.active_character, true) then
+					local next_character_available = false
+					for i, char in ipairs(self.char2_list) do
+						if self.get_character_controllable(char, true) then
+							self.set_active_character(char)
+							next_character_available = true
+							break
+						end
 					end
+					if not next_character_available then
+						self.skip_enemy_turn = false
+						self.start_turn()
+						return
+					end
+					self:do_gooey()
 				end
-				if not next_character_available then
-					self.skip_enemy_turn = false
-					self.start_turn()
-					return
-				end
-                self:do_gooey()
 				local chosen_move = self.skill_list_gui.items[Game.RNG.battle:random(#self.active_character.skills)]
 				self.skill_button_selected = chosen_move.nodes[hash "skillitem_btn"]
 				self.skill_selected = chosen_move.data
@@ -680,14 +697,6 @@ function update(self, dt)
 				end
 				self:do_gooey()
 				self.enemy_timer = 0
-			else
-				self.active_character.actions = self.active_character.actions - (self.skill_selected.action_cost or 1)
-				if self.skill_selected.OnUse then
-					self.write_log(self.skill_selected:OnUse(self.selected_target[1]))
-				end
-				self.deselect_skill()
-				self.check_objectives()
-				self:do_gooey()
 			end
 		end
 	end

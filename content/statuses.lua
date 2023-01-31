@@ -1,5 +1,5 @@
 local function SimpleStatBoost(data)
-	return table.merge(data, {
+	return table.copy(data, {
         GetDesc = function(self)
 			return data.stat_name .. " increased by " .. self.stacks .. "%.\nGoes down by " .. self.stack_decay .. "% per turn."
 		end,
