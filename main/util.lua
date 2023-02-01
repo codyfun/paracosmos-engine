@@ -121,9 +121,25 @@ if not array then --check if already loaded
 			count = count + 1
 		end
 		return count
-    end
+	end
+
+	function table.sane_get(t, idxs, ...) --safe nested index
+		if type(idxs) ~= "table" then
+			idxs = {idxs}
+		end
+		for _, idx in ipairs(idxs) do
+			if type(t) == "table" then
+				t = t[idx]
+			else
+				return nil
+			end
+		end
+		if t then
+			return t
+		end
+	end
 	
-    function table.sane_call(t, idxs, ...) --safe nested index
+    function table.sane_call(t, idxs, ...)
 		if type(idxs) ~= "table" then
 			idxs = {idxs}
 		end
@@ -154,6 +170,17 @@ if not array then --check if already loaded
 
 	function bool.xor(a, b)
 		return (not a and not b) or (a and b)
+    end
+	
+	function bool.truthy(x)
+        if not x then return false end
+		if type(x) == "string" then
+			return x ~= ""
+        end
+		if type(x) == "table" then
+			return table.count(x) ~= 0
+        end
+		return true
 	end
 	
 	function string.firstupper(s)

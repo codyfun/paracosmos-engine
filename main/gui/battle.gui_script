@@ -55,40 +55,41 @@ function init(self)
 	end
 
 	self.update_skilllist = function(list)
-		for i, item in ipairs(list.items) do
-			local button = item.nodes[hash "skillitem_btn"]
-			if item.data and item.data ~= "" then
-				Engine.richtext_autoscale(self, item.nodes[hash "skillitem_text"], item.data.name, 0.8, 125)
-				if item.data.icon and Engine.load_texture(self, item.data.icon) then
-					gui.set_texture(item.nodes[hash "skillitem_image"], item.data.icon)
-					gui.set_color(item.nodes[hash "skillitem_image"], item.data.iconcolor or vmath.vector4(1))
+        for i, item in ipairs(list.items) do
+			local skill = item.data
+			if skill and skill ~= "" then
+				local nodes = item.nodes
+				Engine.richtext_autoscale(self, item.nodes[hash "skillitem_text"], skill.name, 0.8, 125)
+				if skill.icon and Engine.load_texture(self, skill.icon) then
+					gui.set_texture(nodes[hash "skillitem_image"], skill.icon)
+					gui.set_color(nodes[hash "skillitem_image"], skill.iconcolor or vmath.vector4(1))
 				else
-					gui.set_color(item.nodes[hash "skillitem_image"], vmath.vector4(0))
+					gui.set_color(nodes[hash "skillitem_image"], vmath.vector4(0))
                 end
-				if Game.Options.show_hotkeys and self.get_character_controllable() and not self.skill_selected and item.data.target and (item.index <= 10) then
-					gui.set_text(item.nodes["skillitem_hotkey"], "[" .. ((item.index ~= 10) and item.index or 0) .. "]")
-					gui.set_alpha(item.nodes["skillitem_hotkey_bg"], 0.7)
+				if Game.Options.show_hotkeys and self.get_character_controllable() and not self.selected_skill and skill.target and (item.index <= 10) then
+					gui.set_text(nodes["skillitem_hotkey"], "[" .. ((item.index ~= 10) and item.index or 0) .. "]")
+					gui.set_alpha(nodes["skillitem_hotkey_bg"], 0.7)
 				else
-					gui.set_text(item.nodes["skillitem_hotkey"], "")
-					gui.set_alpha(item.nodes["skillitem_hotkey_bg"], 0)
+					gui.set_text(nodes["skillitem_hotkey"], "")
+					gui.set_alpha(nodes["skillitem_hotkey_bg"], 0)
 				end
-				if self.skill_selected == item.data then
-					gui.set_color(button, (self.get_character_controllable() or self.enemy_turn) and gui_colors.skilllist.selected or gui_colors.skilllist.disabled_selected)
+				if self.selected_skill == skill then
+					gui.set_color(nodes[hash "skillitem_btn"], (self.get_character_controllable() or self.enemy_turn) and gui_colors.skilllist.selected or gui_colors.skilllist.disabled_selected)
 				else
-					gui.set_color(button, self.get_character_controllable() and gui_colors.skilllist.normal or gui_colors.skilllist.disabled)
+					gui.set_color(nodes[hash "skillitem_btn"], self.get_character_controllable() and gui_colors.skilllist.normal or gui_colors.skilllist.disabled)
 				end
 			end
 		end
 		if list.over_item and list.over_item.data then
 			local over_button = list.over_item.nodes[hash "skillitem_btn"]
-			if self.skill_button_selected ~= over_button then
+			if self.selected_skill_button ~= over_button then
 				gui.set_color(over_button, self.get_character_controllable() and gui_colors.skilllist.hover or gui_colors.skilllist.disabled_hover)
 			end
-			if not self.skill_selected and list.over_item.data then
+			if not self.selected_skill and list.over_item.data then
 				Engine.richtext_autoscale(self, gui.get_node("tooltip_text"), GL.GetDesc(list.over_item.data))
 			end
 		end
-		if list.out_item_now and not self.skill_selected then
+		if list.out_item_now and not self.selected_skill then
 			Engine.richtext_autoscale(self, gui.get_node("tooltip_text"), "")
 		end
 		if list.scrolling and self.skill_list_scrollbar then
@@ -97,19 +98,19 @@ function init(self)
 	end
 
 	self.selected_skilllist = function(list)
-		if not list.selected_item.data then return end
-		local data = list.selected_item.data
-		if self.get_character_controllable() and data.target then
+		local skill = list.selected_item.data
+		if not skill then return end
+		if self.get_character_controllable() and skill.target then
 			local button = list.selected_item.nodes[hash "skillitem_btn"]
-			if self.skill_button_selected then
-				if self.skill_button_selected ~= button then --deselect previous skill when clicking new one
+			if self.selected_skill_button then
+				if self.selected_skill_button ~= button then --deselect previous skill when clicking new one
 					msg.post("/sound", "play", {id = "click"})
 					for data, nodes in pairs(self.skill_targets) do
 						self.unhighlight_target(nodes)
 					end
                     self.skill_targets = {}
 					self.skill_target_index = {}
-					gui.set_color(self.skill_button_selected, gui_colors.skilllist.normal)
+					gui.set_color(self.selected_skill_button, gui_colors.skilllist.normal)
 				else --click again to confirm
 					self.press_confirmbutton({node = gui.get_node("confirmbutton")})
 					return --do not fallthrough to selection
@@ -117,24 +118,26 @@ function init(self)
 			else
 				msg.post("/sound", "play", {id = "click"})
 			end
-			self.skill_button_selected = button
-			self.skill_selected = list.selected_item.data
+			self.selected_skill_button = button
+			self.selected_skill = list.selected_item.data
             self.selected_target = nil
+			self.selected_target_gui = nil
 			local skill_target_index = 1
-			Engine.richtext_autoscale(self, gui.get_node("tooltip_text"), GL.GetDesc(data))
+			Engine.richtext_autoscale(self, gui.get_node("tooltip_text"), GL.GetDesc(skill))
 			gui.set_alpha(gui.get_node("confirmbutton"), 1)
 			for _, char_list in pairs {self.char_list1_gui, self.char_list2_gui} do
 				for i, char in pairs(char_list.items) do
-					if char.data and data.target(self.active_character, char.data) then
+					if char.data and skill.target(self.active_character, char.data) then
                         self.skill_targets[char.data] = char.nodes
                         self.skill_target_index[char.data] = skill_target_index
 						skill_target_index = skill_target_index + 1
 						if not self.selected_target then
-							self.selected_target = {char.data, char.nodes}
+                            self.selected_target = char.data
+							self.selected_target_gui = char.nodes
 							self.highlight_chosen_target(char.nodes)
-							if data.GetExDesc then
-								local exdesc, replacedesc = data:GetExDesc(self.selected_target[1])
-								Engine.richtext_autoscale(self, gui.get_node("tooltip_text"), replacedesc and exdesc or (GL.GetDesc(data) .. "\n" .. exdesc))
+							if skill.GetExDesc then
+								local exdesc, replacedesc = skill:GetExDesc(self.selected_target)
+								Engine.richtext_autoscale(self, gui.get_node("tooltip_text"), replacedesc and exdesc or (GL.GetDesc(skill) .. "\n" .. exdesc))
 							end
 						else
 							self.highlight_unchosen_target(char.nodes)
@@ -151,13 +154,14 @@ function init(self)
 	end
 
 	self.deselect_skill = function(button)
-		gui.set_color(button or self.skill_button_selected, button and gui_colors.skilllist.hover or gui_colors.skilllist.normal) --interface hack. pass button if over, don't if on confirm instead
+		gui.set_color(button or self.selected_skill_button, button and gui_colors.skilllist.hover or gui_colors.skilllist.normal) --interface hack. pass button if over, don't if on confirm instead
 		if not button then
 			Engine.richtext_autoscale(self, gui.get_node("tooltip_text"), "")
 		end
-		self.skill_button_selected = nil
-		self.skill_selected = nil
+		self.selected_skill_button = nil
+		self.selected_skill = nil
         self.selected_target = nil
+		self.selected_target_gui = nil
 		if not self.battle_ended then
 			gui.set_alpha(gui.get_node("confirmbutton"), 0)
 		end
@@ -177,91 +181,94 @@ function init(self)
 	end
 
 	self.update_charlist_both = function(list, which_list)
-		for i, item in ipairs(list.items) do
-			if item.data and item.data ~= "" then
-				gui.set_id(item.nodes[hash "statuslist_container"], "statuslist_container" .. which_list .. "_" .. item.index)
-				gui.set_id(item.nodes[hash "statuslist_stencil"], "statuslist_stencil" .. which_list .. "_" .. item.index)
-				gui.set_id(item.nodes[hash "statusitem"], "statusitem" .. which_list .. "_" .. item.index)
-				gui.set_id(item.nodes[hash "statusitem_image"], "statusitem_image")
-				gui.set_id(item.nodes[hash "statusitem_counter"], "statusitem_counter")
+        for i, item in ipairs(list.items) do
+			local char = item.data
+            if char and char ~= "" then
+				local nodes = item.nodes
+				gui.set_id(nodes[hash "statuslist_container"], "statuslist_container" .. which_list .. "_" .. item.index)
+				gui.set_id(nodes[hash "statuslist_stencil"], "statuslist_stencil" .. which_list .. "_" .. item.index)
+				gui.set_id(nodes[hash "statusitem"], "statusitem" .. which_list .. "_" .. item.index)
+				gui.set_id(nodes[hash "statusitem_image"], "statusitem_image")
+				gui.set_id(nodes[hash "statusitem_counter"], "statusitem_counter")
 				if not self.selected_target then
-                    gui.set_color(item.nodes[hash "charitem_btn"], item.data.hp > 0 and gui_colors.charlist.normal or gui_colors.charlist.disabled)
-                elseif self.skill_targets[item.data] and item.data ~= self.selected_target[1] then
-					local color = ((self.active_character.enemy == self.selected_target[1].enemy) and gui_colors.charlist.semihighlight_ally or gui_colors.charlist.semihighlight_foe)
-					gui.set_color(item.nodes[hash "charitem_btn"], item.data.hp > 0 and color or gui_colors.charlist.disabled)
+                    gui.set_color(nodes[hash "charitem_btn"], char.hp > 0 and gui_colors.charlist.normal or gui_colors.charlist.disabled)
+                elseif self.skill_targets[char] and char ~= self.selected_target then
+					local color = ((self.active_character.enemy == self.selected_target.enemy) and gui_colors.charlist.semihighlight_ally or gui_colors.charlist.semihighlight_foe)
+					gui.set_color(nodes[hash "charitem_btn"], char.hp > 0 and color or gui_colors.charlist.disabled)
 				end
-				Engine.richtext_autoscale(self, item.nodes[hash "charitem_text"], item.data.name, 1, 200)
-				gui.set_scale(item.nodes[hash "charitem_hpbar"], vmath.vector3(item.data.hp / item.data.hpmax:GetValue(), 1, 1))
-				gui.set_color(item.nodes[hash "charitem_hptext"], vmath.vector3(1, 0, 0) * item.data.hp / item.data.hpmax:GetValue())
-				Engine.richtext_autoscale(self, item.nodes[hash "charitem_hptext"], "HP: " .. item.data.hp .. "/" .. item.data.hpmax:GetValue(), 0.4, 200)
-				if item.data.icon and Engine.load_texture(self, item.data.icon) then
-					gui.set_texture(item.nodes[hash "charitem_image"], item.data.icon)
-					gui.set_color(item.nodes[hash "charitem_image"], item.data.iconcolor or vmath.vector4(1))
+				Engine.richtext_autoscale(self, nodes[hash "charitem_text"], char.name, 1, 200)
+				gui.set_scale(nodes[hash "charitem_hpbar"], vmath.vector3(char.hp / char.hpmax:GetValue(), 1, 1))
+				gui.set_color(nodes[hash "charitem_hptext"], vmath.vector3(1, 0, 0) * char.hp / char.hpmax:GetValue())
+				Engine.richtext_autoscale(self, nodes[hash "charitem_hptext"], "HP: " .. char.hp .. "/" .. char.hpmax:GetValue(), 0.4, 200)
+				if char.icon and Engine.load_texture(self, char.icon) then
+					gui.set_texture(nodes[hash "charitem_image"], char.icon)
+					gui.set_color(nodes[hash "charitem_image"], char.iconcolor or vmath.vector4(1))
 				else
-					gui.set_color(item.nodes[hash "charitem_image"], vmath.vector4(0))
+					gui.set_color(nodes[hash "charitem_image"], vmath.vector4(0))
                 end
-				local skill_target_index = self.skill_target_index[item.data]
-				if Game.Options.show_hotkeys and not self.enemy_turn and self.skill_selected and skill_target_index and (skill_target_index <= 10) then
-					gui.set_text(item.nodes["charitem_hotkey"], "[" .. ((skill_target_index ~= 10) and skill_target_index or 0) .. "]")
-					gui.set_alpha(item.nodes["charitem_hotkey_bg"], 0.7)
+				local skill_target_index = self.skill_target_index[char]
+				if Game.Options.show_hotkeys and not self.enemy_turn and self.selected_skill and skill_target_index and (skill_target_index <= 10) then
+					gui.set_text(nodes["charitem_hotkey"], "[" .. ((skill_target_index ~= 10) and skill_target_index or 0) .. "]")
+					gui.set_alpha(nodes["charitem_hotkey_bg"], 0.7)
 				else
-					gui.set_text(item.nodes["charitem_hotkey"], "")
-					gui.set_alpha(item.nodes["charitem_hotkey_bg"], 0)
-				end
+					gui.set_text(nodes["charitem_hotkey"], "")
+					gui.set_alpha(nodes["charitem_hotkey_bg"], 0)
+                end
+				local acttext = nodes[hash "charitem_acttext"]
 				if self.enemy_turn then
-					if item.data == self.active_character then
-						gui.set_text(item.nodes[hash "charitem_acttext"], "Active")
-						gui.set_color(item.nodes[hash "charitem_acttext"], gui_colors.charlist.acttext.active)
+					if char == self.active_character then
+						gui.set_text(acttext, "Active")
+						gui.set_color(acttext, gui_colors.charlist.acttext.active)
 					else
-						gui.set_text(item.nodes[hash "charitem_acttext"], "")
+						gui.set_text(acttext, "")
 					end
 				else
-					if self.get_character_controllable(item.data) then
-						if item.data == self.active_character then
-							gui.set_text(item.nodes[hash "charitem_acttext"], "Active")
-							gui.set_color(item.nodes[hash "charitem_acttext"], gui_colors.charlist.acttext.active)
+					if self.get_character_controllable(char) then
+						if char == self.active_character then
+							gui.set_text(acttext, "Active")
+							gui.set_color(acttext, gui_colors.charlist.acttext.active)
 						else
-							gui.set_text(item.nodes[hash "charitem_acttext"], "Ready")
-							gui.set_color(item.nodes[hash "charitem_acttext"], gui_colors.charlist.acttext.ready)
+							gui.set_text(acttext, "Ready")
+							gui.set_color(acttext, gui_colors.charlist.acttext.ready)
 						end
 					else
-						if item.data == self.active_character then
-							gui.set_text(item.nodes[hash "charitem_acttext"], "Viewing")
-							gui.set_color(item.nodes[hash "charitem_acttext"], gui_colors.charlist.acttext.viewing)
+						if char == self.active_character then
+							gui.set_text(acttext, "Viewing")
+							gui.set_color(acttext, gui_colors.charlist.acttext.viewing)
 
 						else
-							gui.set_text(item.nodes[hash "charitem_acttext"], "")
+							gui.set_text(acttext, "")
 
 						end
 					end
 				end
 			end
 		end
-		if not self.skill_selected then
+		if not self.selected_skill then
 			if list.over_item and list.over_item.data then
-				local data = list.over_item.data
+				local skill = list.over_item.data
 				Engine.richtext_autoscale(self, gui.get_node("tooltip_text"), string.gsub(
 					"Lv. {level} {class}\n<color={hpcolor}>HP: {hp}/{hpmax}</color>\n<color=red>Atk: {attack}  </color><color=purple>Mat: {magicattack}  </color><color=brown>Acc: {accuracy}</color>\n<color=teal><color=blue>Def: {defense}  </color>Mdf: {magicdefense}  </color><color=green>Eva: {evasion}</color>{acthint}", "%{(.-)%}", function(s)
 					if s == "acthint" then
-						if data.enemy then
+						if skill.enemy then
 							return "\n\nEnemy"
 						else
-							if data.actions > 0 then
+							if skill.actions > 0 then
 								return "\n\nReady to act"
 							else
 								return "\n\nOut of actions"
 							end
                         end
-                    elseif s == "class" and not data.class then
-						if data.enemy then
-                            return content.chars[data.id].name
+                    elseif s == "class" and not skill.class then
+						if skill.enemy then
+                            return content.chars[skill.id].name
                         else
 							return "Human"
 						end
 					elseif s == "hpcolor" then
-						return string.format("%.2f,0,0,1", data.hp / data.hpmax:GetValue())
+						return string.format("%.2f,0,0,1", skill.hp / skill.hpmax:GetValue())
 					end
-					return GL.FormatDescField(data, s)
+					return GL.FormatDescField(skill, s)
 				end), nil) --nil blocks second output from gsub
 			end
 			if list.out_item_now and list.out_item_now.data then
@@ -276,32 +283,34 @@ function init(self)
 		end
 	end
 
-	self.selected_charlist = function(list)
-		if not list.selected_item.data then return end
-		if self.get_character_controllable() and self.skill_selected then
-			if self.skill_targets[list.selected_item.data] then
-				if list.selected_item.data == self.selected_target[1] then
+    self.selected_charlist = function(list)
+		local char = list.selected_item.data
+		if not char then return end
+		if self.get_character_controllable() and self.selected_skill then
+			if self.skill_targets[char] then
+				if char == self.selected_target then
 					self.press_confirmbutton({node = gui.get_node("confirmbutton")})
                 else
 					for data, nodes in pairs(self.skill_targets) do
 						self.highlight_unchosen_target(nodes)
 					end
-					self.selected_target = {list.selected_item.data, list.selected_item.nodes}
+                    self.selected_target = char
+					self.selected_target_gui = list.selected_item.nodes
 					self.highlight_chosen_target(list.selected_item.nodes)
-					if self.skill_selected.GetExDesc then
-						local exdesc, replacedesc = self.skill_selected:GetExDesc(self.selected_target[1])
-						Engine.richtext_autoscale(self, gui.get_node("tooltip_text"), replacedesc and exdesc or (GL.GetDesc(self.skill_selected) .. "\n" .. exdesc))
+					if self.selected_skill.GetExDesc then
+						local exdesc, replacedesc = self.selected_skill:GetExDesc(self.selected_target)
+						Engine.richtext_autoscale(self, gui.get_node("tooltip_text"), replacedesc and exdesc or (GL.GetDesc(self.selected_skill) .. "\n" .. exdesc))
 					end
 					msg.post("/sound", "play", {id = "click"})
 				end
 			end
 		else
-			if self.skill_selected then
+			if self.selected_skill then
 				self.deselect_skill()
 			end
-			if self.active_character ~= list.selected_item.data then
+			if self.active_character ~= char then
 				msg.post("/sound", "play", {id = "click"})
-				self.set_active_character(list.selected_item.data)
+				self.set_active_character(char)
 			end
 		end
 		self:do_gooey()
@@ -316,33 +325,36 @@ function init(self)
 	end
 
 	self.update_statuslist = function(list)
-		for i, item in ipairs(list.items) do
-			if item.data and item.data ~= "" then
-				if item.data.icon and Engine.load_texture(self, item.data.icon) then
-					gui.set_texture(item.nodes[hash "statusitem_image"], item.data.icon)
-					gui.set_color(item.nodes[hash "statusitem_image"], item.data.iconcolor or vmath.vector4(1))
-				end
-				if item.data.stacks then
-					gui.set_color(item.nodes[hash "statusitem_counter"], vmath.vector4(0, 0, 0, 1))
-					gui.set_text(item.nodes[hash "statusitem_counter"], item.data.stacks)
-					gui.set_outline(item.nodes[hash "statusitem_counter"], item.data.iconcolor)
+        for i, item in ipairs(list.items) do
+			local status = item.data
+			if bool.truthy(status) then
+				local nodes = item.nodes
+				if status.icon and Engine.load_texture(self, status.icon) then
+					gui.set_texture(nodes[hash "statusitem_image"], status.icon)
+					gui.set_color(nodes[hash "statusitem_image"], status.iconcolor or vmath.vector4(1))
+                end
+				local counter = nodes[hash "statusitem_counter"]
+				if status.stacks then
+					gui.set_color(counter, vmath.vector4(0, 0, 0, 1))
+					gui.set_text(counter, status.stacks)
+					gui.set_outline(counter, status.iconcolor)
 				else
-					gui.set_color(item.nodes[hash "statusitem_counter"], vmath.vector4(0))
+					gui.set_alpha(counter, 0)
 				end
 			end
 		end
 		if list.over_item and list.over_item.data then
-			local data = list.over_item.data
+			local status = list.over_item.data
 			Engine.richtext_autoscale(self, gui.get_node("tooltip_text"), string.gsub(
 				"{name}\n{desc}", "%{(.-)%}", function(s)
-				return GL.FormatDescField(data, s)
+				return GL.FormatDescField(status, s)
 			end), nil)
 		end
 	end
 
 	self.highlight_chosen_target = function(nodes)
-		local semicolor = ((self.active_character.enemy == self.selected_target[1].enemy) and gui_colors.charlist.semihighlight_ally or gui_colors.charlist.semihighlight_foe)
-		local color = ((self.active_character.enemy == self.selected_target[1].enemy) and gui_colors.charlist.highlight_ally or gui_colors.charlist.highlight_foe)
+		local semicolor = ((self.active_character.enemy == self.selected_target.enemy) and gui_colors.charlist.semihighlight_ally or gui_colors.charlist.semihighlight_foe)
+		local color = ((self.active_character.enemy == self.selected_target.enemy) and gui_colors.charlist.highlight_ally or gui_colors.charlist.highlight_foe)
 		gui.cancel_animation(nodes[hash "charitem_btn"], gui.PROP_COLOR)
 		gui.set_color(nodes[hash "charitem_btn"], semicolor)
 		gui.animate(nodes[hash "charitem_btn"], gui.PROP_COLOR, color, gui.EASING_INOUTQUAD, 1, 0, nil, gui.PLAYBACK_LOOP_PINGPONG)
@@ -357,7 +369,7 @@ function init(self)
 	end
 
 	self.highlight_unchosen_target = function(nodes)
-		local color = ((self.active_character.enemy == self.selected_target[1].enemy) and gui_colors.charlist.semihighlight_ally or gui_colors.charlist.semihighlight_foe)
+		local color = ((self.active_character.enemy == self.selected_target.enemy) and gui_colors.charlist.semihighlight_ally or gui_colors.charlist.semihighlight_foe)
         gui.cancel_animation(nodes[hash "charitem_btn"], gui.PROP_COLOR)
 		gui.set_color(nodes[hash "charitem_btn"], color)
 		gui.set_visible(nodes[hash "charitem_pointer"], true)
@@ -377,7 +389,7 @@ function init(self)
 	end
 
 	self.update_confirmbutton = function(button)
-		if self.skill_selected or self.battle_ended then
+		if self.selected_skill or self.battle_ended then
 			if button.over_now then
 				gui.set_color(button.node, gui_colors.confirmbutton.hover)
 			end
@@ -405,12 +417,12 @@ function init(self)
 				msg.post("/main", "save_game")
 			end
 			monarch.back()
-		elseif self.skill_selected then
+		elseif self.selected_skill then
 			msg.post("/sound", "play", {id = "click"})
 			gui.set_color(button.node, gui_colors.confirmbutton.normal)
 			self.active_character.actions = self.active_character.actions - 1
-			if self.skill_selected.OnUse then
-				self.write_log(self.skill_selected:OnUse(self.selected_target[1]))
+			if self.selected_skill.OnUse then
+				self.write_log(self.selected_skill:OnUse(self.selected_target))
 			end
 			self.deselect_skill()
 			self.check_objectives()
@@ -432,9 +444,11 @@ function init(self)
     end
 	
 	local drop_loot = function(char)
-		self.rewardpool.xp = self.rewardpool.xp + char.reward_xp * content.formulas.xpscaling(char.level)
+        self.rewardpool.xp = self.rewardpool.xp + char.reward_xp * content.formulas.xpscaling(char.level)
+		local drop_payout = char.reward_xp
 		local drop_roll = Game.RNG.world:random(100)
-        if drop_roll < char.reward_xp then
+        while drop_roll < drop_payout do
+			drop_payout = drop_payout - 100
             local drop_table = array.match(char.perks, function(perk)
                 return (not perk.CanDrop) or (perk:CanDrop())
 			end)
@@ -558,10 +572,10 @@ function init(self)
 	self.do_gooey = function(self, action_id, action) -- run on on_input, but also used to run the update functions again after a selection function during middle of primary call
 		self.char_list1_gui = gooey.dynamic_list("charlist1_bg", "charlist1_stencil", "charitem1_bg", self.char1_list, action_id, action, nil, self.selected_charlist, self.update_charlist1)
 		self.char_list2_gui = gooey.dynamic_list("charlist2_bg", "charlist2_stencil", "charitem2_bg", self.char2_list, action_id, action, nil, self.selected_charlist, self.update_charlist2)
-		for _, char_list in pairs {{self.char_list1_gui, 1}, {self.char_list2_gui, 2}} do
-			for i, char in pairs(char_list[1].items) do
+		for which, char_list in ipairs {self.char_list1_gui, self.char_list2_gui} do
+			for i, char in ipairs(char_list.items) do
 				if char.data then
-					gooey.dynamic_list("statuslist_container" .. char_list[2] .. "_" .. char.index, "statuslist_stencil" .. char_list[2] .. "_" .. char.index, "statusitem" .. char_list[2] .. "_" .. char.index, char.data.statuses, action_id, action, {horizontal = true}, nil, self.update_statuslist)
+					gooey.dynamic_list("statuslist_container" .. which .. "_" .. char.index, "statuslist_stencil" .. which .. "_" .. char.index, "statusitem" .. which .. "_" .. char.index, char.data.statuses, action_id, action, {horizontal = true}, nil, self.update_statuslist)
 				end
 			end
 		end
@@ -648,10 +662,10 @@ function update(self, dt)
 	if self.enemy_turn and not self.battle_ended then
 		self.enemy_timer = self.enemy_timer + dt
 		if self.enemy_timer > enemy_move_preview_time or self.skip_enemy_turn then
-			if self.skill_selected then
-				self.active_character.actions = self.active_character.actions - (self.skill_selected.action_cost or 1)
-				if self.skill_selected.OnUse then
-					self.write_log(self.skill_selected:OnUse(self.selected_target[1]))
+			if self.selected_skill then
+				self.active_character.actions = self.active_character.actions - (self.selected_skill.action_cost or 1)
+				if self.selected_skill.OnUse then
+					self.write_log(self.selected_skill:OnUse(self.selected_target))
 				end
 				self.deselect_skill()
 				self.check_objectives()
@@ -674,23 +688,25 @@ function update(self, dt)
 					self:do_gooey()
 				end
 				local chosen_move = self.skill_list_gui.items[Game.RNG.battle:random(#self.active_character.skills)]
-				self.skill_button_selected = chosen_move.nodes[hash "skillitem_btn"]
-				self.skill_selected = chosen_move.data
-				local skill_targets = {}
+				self.selected_skill_button = chosen_move.nodes[hash "skillitem_btn"]
+				self.selected_skill = chosen_move.data
+				local skill_target_list = {}
 				if chosen_move.data.target then
 					for _, char_list in ipairs {self.char_list2_gui, self.char_list1_gui} do
 						for i, char in ipairs(char_list.items) do
 							if char.data and chosen_move.data.target(self.active_character, char.data) then
 								self.skill_targets[char.data] = char.nodes
-								table.insert(skill_targets, {char.data, char.nodes})
+								table.insert(skill_target_list, char)
 							end
 						end
-					end
-					self.selected_target = skill_targets[Game.RNG.battle:random(#skill_targets)]
-					self.highlight_chosen_target(self.selected_target[2])
+                    end
+					local new_target = skill_target_list[Game.RNG.battle:random(#skill_target_list)]
+                    self.selected_target = new_target.data
+					self.selected_target_gui = new_target.nodes
+					self.highlight_chosen_target(self.selected_target_gui)
 				end
 				if chosen_move.data.GetExDesc then
-					local exdesc, replacedesc = chosen_move.data:GetExDesc(self.selected_target[1])
+					local exdesc, replacedesc = chosen_move.data:GetExDesc(self.selected_target)
 					Engine.richtext_autoscale(self, gui.get_node("tooltip_text"), replacedesc and exdesc or (GL.GetDesc(chosen_move.data) .. "\n" .. exdesc))
 				else
 					Engine.richtext_autoscale(self, gui.get_node("tooltip_text"), GL.GetDesc(chosen_move.data))
@@ -768,7 +784,7 @@ function on_input(self, action_id, action)
 				[hash "key_numpad_0"] = 10,
 			})[action_id]
 			if num_pressed then
-				if self.skill_selected then
+				if self.selected_skill then
                     local target = table.find_if(self.skill_target_index, function(i) return i == num_pressed end)
 					if target then
 						if target.enemy then
@@ -787,14 +803,14 @@ function on_input(self, action_id, action)
 			if action_id == "confirm" then
                 self.press_confirmbutton({node = gui.get_node("confirmbutton")})
             elseif action_id == "cycle" then
-				if self.skill_selected then
-                    local i = self.skill_target_index[self.selected_target[1]] + 1
+				if self.selected_skill then
+                    local i = self.skill_target_index[self.selected_target] + 1
 					local next_target
 					if i > table.count(self.skill_target_index) then
 						i = 1
                     end
 					local next_target = table.find_if(self.skill_target_index, function(j) return i == j end)
-					if next_target ~= self.selected_target[1] then
+					if next_target ~= self.selected_target then
 						self.selected_charlist({selected_item = {data = next_target, nodes = self.skill_targets[next_target]}})
 					end
 				else
@@ -823,8 +839,8 @@ function on_input(self, action_id, action)
 					end
 				end
 			elseif action_id == "cancel" then
-				if self.skill_button_selected then
-					self.deselect_skill(self.skill_button_selected)
+				if self.selected_skill_button then
+					self.deselect_skill(self.selected_skill_button)
 					Engine.richtext_autoscale(self, gui.get_node("tooltip_text"), "")
 					msg.post("/sound", "play", {id = "woosh"})
 					self:do_gooey()

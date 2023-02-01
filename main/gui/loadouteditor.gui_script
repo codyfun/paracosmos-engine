@@ -40,16 +40,19 @@ function init(self)
 
     function self.update_perklist(list)
         for i, item in ipairs(list.items) do
-            local button = item.nodes[hash "perkitem_btn"]
-            if item.data and item.data ~= "" then
-                Engine.richtext_autoscale(self, item.nodes[hash "perkitem_text"], item.data.name, 0.8, 125)
-                if item.data.icon and Engine.load_texture(self, item.data.icon) then
-                    gui.set_texture(item.nodes[hash "perkitem_image"], item.data.icon)
-                    gui.set_color(item.nodes[hash "perkitem_image"], item.data.iconcolor or vmath.vector4(1))
+            local perk = item.data
+            if bool.truthy(perk) then
+                local nodes = item.nodes
+                local button = nodes[hash "perkitem_btn"]
+                Engine.richtext_autoscale(self, item.nodes[hash "perkitem_text"], perk.name, 0.8, 125)
+                local image = nodes[hash "perkitem_image"]
+                if perk.icon and Engine.load_texture(self, perk.icon) then
+                    gui.set_texture(image, perk.icon)
+                    gui.set_color(image, perk.iconcolor or vmath.vector4(1))
                 else
-                    gui.set_color(item.nodes[hash "perkitem_image"], vmath.vector4(0))
+                    gui.set_color(image, vmath.vector4(0))
                 end
-                if self.perk_selected == item.data then
+                if self.selected_perk == perk then
                     gui.set_color(button, gui_colors.perklist.selected)
                 else
                     gui.set_color(button, gui_colors.perklist.normal)
@@ -58,14 +61,14 @@ function init(self)
         end
         if list.over_item and list.over_item.data then
             local over_button = list.over_item.nodes[hash "perkitem_btn"]
-            if self.perk_button_selected ~= over_button then
+            if self.selected_perk_button ~= over_button then
                 gui.set_color(over_button, gui_colors.perklist.hover)
             end
-            if not (self.perk_selected or self.storeperk_selected) and list.over_item.data then
+            if not (self.selected_perk or self.selected_storeperk) and list.over_item.data then
                 Engine.richtext_autoscale(self, gui.get_node("tooltip_text"), GL.GetDesc(list.over_item.data))
             end
         end
-        if list.out_item_now and not (self.perk_selected or self.storeperk_selected) then
+        if list.out_item_now and not (self.selected_perk or self.selected_storeperk) then
             Engine.richtext_autoscale(self, gui.get_node("tooltip_text"), "")
         end
         if list.scrolling and self.perk_list_scrollbar then
@@ -74,12 +77,13 @@ function init(self)
     end
 
     function self.selected_perklist(list)
-        if not list.selected_item.data then return end
+        local perk = list.selected_item.data
+        if not perk then return end
         local button = list.selected_item.nodes[hash "perkitem_btn"]
-        if self.perk_button_selected or self.storeperk_button_selected then
-            if self.perk_button_selected ~= button then --deselect previous perk when clicking new one
+        if self.selected_perk_button or self.selected_storeperk_button then
+            if self.selected_perk_button ~= button then --deselect previous perk when clicking new one
                 msg.post("/sound", "play", {id = "click"})
-                self.deselect_perk(self.perk_button_selected)
+                self.deselect_perk(self.selected_perk_button)
             else --click again to remove
                 self.press_unequipbutton({node = gui.get_node("unequipbutton")})
                 return --do not fallthrough to selection
@@ -87,14 +91,14 @@ function init(self)
         else
             msg.post("/sound", "play", {id = "click"})
         end
-        self.perk_button_selected = button
-        self.perk_selected = list.selected_item.data
-        local storeperk_at = table.find_if(self.storeperk_list, function(storeperk) return storeperk.id == list.selected_item.data.id end)
+        self.selected_perk_button = button
+        self.selected_perk = perk
+        local storeperk_at = table.find_if(self.storeperk_list, function(storeperk) return storeperk.id == perk.id end)
         if storeperk_at then
-            self.storeperk_selected = self.storeperk_list[storeperk_at]
-            self.storeperk_button_selected = self.storeperk_list_gui.items[storeperk_at].nodes[hash "storeperkitem_btn"]
+            self.selected_storeperk = self.storeperk_list[storeperk_at]
+            self.selected_storeperk_button = self.storeperk_list_gui.items[storeperk_at].nodes[hash "storeperkitem_btn"]
         end
-        Engine.richtext_autoscale(self, gui.get_node("tooltip_text"), GL.GetDesc(list.selected_item.data))
+        Engine.richtext_autoscale(self, gui.get_node("tooltip_text"), GL.GetDesc(perk))
         self:do_gooey()
     end
 
@@ -103,33 +107,35 @@ function init(self)
     end
 
     self.deselect_perk = function(button)
-        if self.perk_button_selected then
-            gui.set_color(self.perk_button_selected, (button == self.perk_button_selected) and gui_colors.perklist.hover or gui_colors.perklist.normal)
+        if self.selected_perk_button then
+            gui.set_color(self.selected_perk_button, (button == self.selected_perk_button) and gui_colors.perklist.hover or gui_colors.perklist.normal)
         end
-        if self.storeperk_button_selected then
-            gui.set_color(self.storeperk_button_selected, (button == self.storeperk_button_selected) and gui_colors.perklist.hover or gui_colors.perklist.normal)
+        if self.selected_storeperk_button then
+            gui.set_color(self.selected_storeperk_button, (button == self.selected_storeperk_button) and gui_colors.perklist.hover or gui_colors.perklist.normal)
         end
         if not button then
             Engine.richtext_autoscale(self, gui.get_node("tooltip_text"), "")
         end
-        self.perk_button_selected = nil
-        self.perk_selected = nil
-        self.storeperk_button_selected = nil
-        self.storeperk_selected = nil
+        self.selected_perk_button = nil
+        self.selected_perk = nil
+        self.selected_storeperk_button = nil
+        self.selected_storeperk = nil
     end
 
     function self.update_storeperklist(list)
         for i, item in ipairs(list.items) do
             local button = item.nodes[hash "storeperkitem_btn"]
-            if item.data and item.data ~= "" then
-                Engine.richtext_autoscale(self, item.nodes[hash "storeperkitem_text"], item.data.name .. " x" .. item.data.amount, 0.8, 125)
-                if item.data.icon and Engine.load_texture(self, item.data.icon) then
-                    gui.set_texture(item.nodes[hash "storeperkitem_image"], item.data.icon)
-                    gui.set_color(item.nodes[hash "storeperkitem_image"], item.data.iconcolor or vmath.vector4(1))
+            local storeperk = item.data
+            if bool.truthy(storeperk) then
+                Engine.richtext_autoscale(self, item.nodes[hash "storeperkitem_text"], storeperk.name .. " x" .. storeperk.amount, 0.8, 125)
+                local image = item.nodes[hash "storeperkitem_image"]
+                if storeperk.icon and Engine.load_texture(self, storeperk.icon) then
+                    gui.set_texture(image, storeperk.icon)
+                    gui.set_color(image, storeperk.iconcolor or vmath.vector4(1))
                 else
-                    gui.set_color(item.nodes[hash "storeperkitem_image"], vmath.vector4(0))
+                    gui.set_color(image, vmath.vector4(0))
                 end
-                if self.storeperk_selected == item.data then
+                if self.selected_storeperk == storeperk then
                     gui.set_color(button, gui_colors.perklist.selected)
                 else
                     gui.set_color(button, gui_colors.perklist.normal)
@@ -138,14 +144,14 @@ function init(self)
         end
         if list.over_item and list.over_item.data then
             local over_button = list.over_item.nodes[hash "storeperkitem_btn"]
-            if self.storeperk_button_selected ~= over_button then
+            if self.selected_storeperk_button ~= over_button then
                 gui.set_color(over_button, gui_colors.perklist.hover)
             end
-            if not (self.perk_selected or self.storeperk_selected) and list.over_item.data then
+            if not (self.selected_perk or self.selected_storeperk) and list.over_item.data then
                 Engine.richtext_autoscale(self, gui.get_node("tooltip_text"), GL.GetDesc(list.over_item.data))
             end
         end
-        if list.out_item_now and not (self.perk_selected or self.storeperk_selected) then
+        if list.out_item_now and not (self.selected_perk or self.selected_storeperk) then
             Engine.richtext_autoscale(self, gui.get_node("tooltip_text"), "")
         end
         if list.scrolling and self.perk_list_scrollbar then
@@ -155,11 +161,12 @@ function init(self)
 
     function self.selected_storeperklist(list)
         if not list.selected_item.data then return end
+        local data = list.selected_item.data
         local button = list.selected_item.nodes[hash "storeperkitem_btn"]
-        if self.perk_button_selected or self.storeperk_button_selected then
-            if self.storeperk_button_selected ~= button then --deselect previous perk when clicking new one
+        if self.selected_perk_button or self.selected_storeperk_button then
+            if self.selected_storeperk_button ~= button then --deselect previous perk when clicking new one
                 msg.post("/sound", "play", {id = "click"})
-                self.deselect_perk(self.storeperk_button_selected)
+                self.deselect_perk(self.selected_storeperk_button)
             else --click again to add
                 self.press_equipbutton({node = gui.get_node("equipbutton")})
                 return --do not fallthrough to selection
@@ -167,14 +174,14 @@ function init(self)
         else
             msg.post("/sound", "play", {id = "click"})
         end
-        self.storeperk_button_selected = button
-        self.storeperk_selected = list.selected_item.data
-        local perk_at = table.find_if(self.perk_list, function(perk) return perk.id == list.selected_item.data.id end)
+        self.selected_storeperk_button = button
+        self.selected_storeperk = data
+        local perk_at = table.find_if(self.perk_list, function(perk) return perk.id == data.id end)
         if perk_at then
-            self.perk_selected = self.perk_list[perk_at]
-            self.perk_button_selected = self.perk_list_gui.items[perk_at].nodes[hash "perkitem_btn"]
+            self.selected_perk = self.perk_list[perk_at]
+            self.selected_perk_button = self.perk_list_gui.items[perk_at].nodes[hash "perkitem_btn"]
         end
-        Engine.richtext_autoscale(self, gui.get_node("tooltip_text"), GL.GetDesc(list.selected_item.data))
+        Engine.richtext_autoscale(self, gui.get_node("tooltip_text"), GL.GetDesc(data))
         self:do_gooey()
     end
 
@@ -194,19 +201,22 @@ function init(self)
 
     function self.update_charlist(list)
         for i, item in ipairs(list.items) do
-            if item.data and item.data ~= "" then
-                gui.set_color(item.nodes[hash "charitem_btn"], (self.selected_char and self.selected_char[1] == item.data) and gui_colors.charlist.selected or gui_colors.charlist.normal)
-                Engine.richtext_autoscale(self, item.nodes[hash "charitem_text"], item.data.name, 1, 200)
-                gui.set_scale(item.nodes[hash "charitem_xpbar"], vmath.vector3(item.data.xp / content.formulas.xpscaling(item.data.level) / 100, 1, 1))
-                gui.set_color(item.nodes[hash "charitem_xptext"], vmath.vector3(0, 1, 0.5) * (item.data.xp / content.formulas.xpscaling(item.data.level) / 100) + vmath.vector3(0, 0, 0.5))
-                Engine.richtext_autoscale(self, item.nodes[hash "charitem_xptext"], "XP: " .. item.data.xp .. "/" .. (content.formulas.xpscaling(item.data.level) * 100), 0.4, 200)
-                gui.set_color(item.nodes[hash "charitem_lvltext"], (item.data:SumLevelsSpent() < item.data.level) and gui_colors.charlist.highlight_lvl or vmath.vector3(0, 0, 0, 1))
-                Engine.richtext_autoscale(self, item.nodes[hash "charitem_lvltext"], "Level: " .. item.data:SumLevelsSpent() .. "/" .. item.data.level, 1, 220)
-                if item.data.icon and Engine.load_texture(self, item.data.icon) then
-                    gui.set_texture(item.nodes[hash "charitem_image"], item.data.icon)
-                    gui.set_color(item.nodes[hash "charitem_image"], item.data.iconcolor or vmath.vector4(1))
+            local char = item.data
+            if bool.truthy(char) then
+                local nodes = item.nodes
+                gui.set_color(nodes[hash "charitem_btn"], (self.selected_char and self.selected_char == char) and gui_colors.charlist.selected or gui_colors.charlist.normal)
+                Engine.richtext_autoscale(self, nodes[hash "charitem_text"], char.name, 1, 200)
+                gui.set_scale(nodes[hash "charitem_xpbar"], vmath.vector3(char.xp / content.formulas.xpscaling(char.level) / 100, 1, 1))
+                gui.set_color(nodes[hash "charitem_xptext"], vmath.vector3(0, 1, 0.5) * (char.xp / content.formulas.xpscaling(char.level) / 100) + vmath.vector3(0, 0, 0.5))
+                Engine.richtext_autoscale(self, nodes[hash "charitem_xptext"], "XP: " .. char.xp .. "/" .. (content.formulas.xpscaling(char.level) * 100), 0.4, 200)
+                gui.set_color(nodes[hash "charitem_lvltext"], (char:SumLevelsSpent() < char.level) and gui_colors.charlist.highlight_lvl or vmath.vector3(0, 0, 0, 1))
+                Engine.richtext_autoscale(self, nodes[hash "charitem_lvltext"], "Level: " .. char:SumLevelsSpent() .. "/" .. char.level, 1, 220)
+                local image = nodes[hash "charitem_image"]
+                if item.data.icon and Engine.load_texture(self, char.icon) then
+                    gui.set_texture(image, char.icon)
+                    gui.set_color(image, char.iconcolor or vmath.vector4(1))
                 else
-                    gui.set_color(item.nodes[hash "charitem_image"], vmath.vector4(0))
+                    gui.set_color(image, vmath.vector4(0))
                 end
             end
         end
@@ -217,22 +227,22 @@ function init(self)
             Engine.richtext_autoscale(self, gui.get_node("statsheet_text"), string.gsub(
                 "Lv. {level} {class}\n<color=red>Max HP: {hpmax}</color>\n<color=red>Atk: {attack}  </color><color=purple>Mat: {magicattack}  </color><color=brown>Acc: {accuracy}</color>\n<color=teal><color=blue>Def: {defense}  </color>Mdf: {magicdefense}  </color><color=green>Eva: {evasion}</color>\n{skillslots}"
                 , "%{(.-)%}", function(s)
-                if s == "class" and not self.selected_char[1].class then
+                if s == "class" and not self.selected_char.class then
                     return "Human"
                 elseif s == "skillslots" then
-                    local skill_slots = count_skill_slots(self.selected_char[1])
-                    return "Attack Skills: " .. (skill_slots.attack or 0) .. "/" .. self.selected_char[1].skill_slots.attack  .. "\nSupport Skills: " .. (skill_slots.support or 0) .. "/" .. self.selected_char[1].skill_slots.support
+                    local filled_skill_slots = count_skill_slots(self.selected_char)
+                    return "Attack Skills: " .. (filled_skill_slots.attack or 0) .. "/" .. self.selected_char.skill_slots.attack  .. "\nSupport Skills: " .. (filled_skill_slots.support or 0) .. "/" .. self.selected_char.skill_slots.support
                 end
-                return GL.FormatDescField(self.selected_char[1], s)
+                return GL.FormatDescField(self.selected_char, s)
             end), nil) --nil blocks second output from gsub
         end
     end
 
     function self.selected_charlist(list)
         if not list.selected_item.data then return end
-        if self.selected_char[1] ~= list.selected_item.data then
+        if self.selected_char ~= list.selected_item.data then
             msg.post("/sound", "play", {id = "click"})
-            self.set_selected_char({list.selected_item.data, list.selected_item.nodes})
+            self.set_selected_char(list.selected_item.data, list.selected_item.nodes)
         end
     end
 
@@ -240,47 +250,48 @@ function init(self)
         self.char_list_gui.scroll_to(scrollbar.scroll.x, scrollbar.scroll.y)
     end
 
-    function self.set_selected_char(char)
+    function self.set_selected_char(char, char_gui)
         self:deselect_perk()
         if self.selected_char then
-            gui.set_visible(self.selected_char[2][hash "charitem_pointer"], false)
+            gui.set_visible(self.selected_char_gui[hash "charitem_pointer"], false)
         end
         self.selected_char = char
-        Engine.richtext_autoscale(self, gui.get_node("perklist_title"), string.format("%s's perks", char[1].name), 0.8, 175)
-        gui.set_visible(char[2][hash "charitem_pointer"], true)
-        self.perk_list = char[1].perks
+        self.selected_char_gui = char_gui
+        Engine.richtext_autoscale(self, gui.get_node("perklist_title"), string.format("%s's perks", char.name), 0.8, 175)
+        gui.set_visible(char_gui[hash "charitem_pointer"], true)
+        self.perk_list = char.perks
         self:do_gooey()
     end
 
     function self.update_equipbutton(button)
         local cannot_equip = false
         local over_msg = false
-        if self.perk_selected then
+        if self.selected_perk then
             cannot_equip = true
-            if self.storeperk_selected and button.over then
+            if self.selected_storeperk and button.over then
                 over_msg = true
                 Engine.richtext_autoscale(self, gui.get_node("equipmsg_text"), "Already equipped!")
             end
-        elseif self.storeperk_selected then
-            if self.storeperk_selected.CanEquip and not self.storeperk_selected:CanEquip(self.selected_char[1]) then
+        elseif self.selected_storeperk then
+            if self.selected_storeperk.CanEquip and not self.selected_storeperk:CanEquip(self.selected_char) then
                 cannot_equip = true
-                if not self.perk_selected and button.over then
+                if not self.selected_perk and button.over then
                     over_msg = true
                     Engine.richtext_autoscale(self, gui.get_node("equipmsg_text"), "Requirements not met!")
                 end
-            elseif self.selected_char and (self.selected_char[1]:SumLevelsSpent() + (self.storeperk_selected.cost or 1) > self.selected_char[1].level) then
+            elseif self.selected_char and (self.selected_char:SumLevelsSpent() + (self.selected_storeperk.cost or 1) > self.selected_char.level) then
                 cannot_equip = true
-                if not self.perk_selected and button.over then
+                if not self.selected_perk and button.over then
                     over_msg = true
                     Engine.richtext_autoscale(self, gui.get_node("equipmsg_text"), "Not enough levels!")
                 end
-            elseif self.storeperk_selected.skill_type then
-                local skill_slots = count_skill_slots(self.selected_char[1])
-                if (skill_slots[self.storeperk_selected.skill_type] or 0) + 1 > self.selected_char[1].skill_slots[self.storeperk_selected.skill_type] then
+            elseif self.selected_storeperk.skill_type then
+                local skill_slots = count_skill_slots(self.selected_char)
+                if (skill_slots[self.selected_storeperk.skill_type] or 0) + 1 > self.selected_char.skill_slots[self.selected_storeperk.skill_type] then
                     cannot_equip = true
-                    if not self.perk_selected and button.over then
+                    if not self.selected_perk and button.over then
                         over_msg = true
-                        Engine.richtext_autoscale(self, gui.get_node("equipmsg_text"), "All " .. string.firstupper(self.storeperk_selected.skill_type) .. " slots full!")
+                        Engine.richtext_autoscale(self, gui.get_node("equipmsg_text"), "All " .. string.firstupper(self.selected_storeperk.skill_type) .. " slots full!")
                     end
                 end
             end
@@ -297,7 +308,7 @@ function init(self)
         if not over_msg then
             Engine.richtext_autoscale(self, gui.get_node("equipmsg_text"), "")
         end
-        if self.storeperk_selected then
+        if self.selected_storeperk then
             gui.set_alpha(button.node, 1)
         else
             gui.set_alpha(button.node, 0)
@@ -306,19 +317,19 @@ function init(self)
     end
 
     function self.press_equipbutton(button)
-        if self.storeperk_selected and not self.perk_selected and not self.cannot_equip then
-            local perk = self.storeperk_selected
-            self.selected_char[1]:AddPerk(perk.id)
+        if self.selected_storeperk and not self.selected_perk and not self.cannot_equip then
+            local perk = self.selected_storeperk
+            self.selected_char:AddPerk(perk.id)
             perk.amount = perk.amount - 1
             if perk.amount == 0 then
                 table.remove_value(self.storeperk_list, perk)
-                self.storeperk_button_selected = nil
-                self.storeperk_selected = nil
+                self.selected_storeperk_button = nil
+                self.selected_storeperk = nil
             end
             msg.post("/sound", "play", {id = "click"})
-            self.perk_selected = self.perk_list[#self.perk_list]
+            self.selected_perk = self.perk_list[#self.perk_list]
             self:do_gooey()
-            self.perk_button_selected = self.perk_list_gui.items[#self.perk_list].nodes[hash "perkitem_btn"]
+            self.selected_perk_button = self.perk_list_gui.items[#self.perk_list].nodes[hash "perkitem_btn"]
             self:do_gooey()
         end
     end
@@ -329,7 +340,7 @@ function init(self)
         else
             gui.set_color(button.node, gui_colors.unequipbutton.normal)
         end
-        if self.perk_selected then
+        if self.selected_perk then
             gui.set_alpha(button.node, 1)
         else
             gui.set_alpha(button.node, 0)
@@ -343,26 +354,26 @@ function init(self)
         else
             perk.amount = 1
             table.insert(self.storeperk_list, perk)
-            self.storeperk_selected = self.storeperk_list[#self.storeperk_list]
-            self.storeperk_button_selected = self.storeperk_list_gui.items[#self.storeperk_list].nodes[hash "storeperkitem_btn"]
+            self.selected_storeperk = self.storeperk_list[#self.storeperk_list]
+            self.selected_storeperk_button = self.storeperk_list_gui.items[#self.storeperk_list].nodes[hash "storeperkitem_btn"]
         end
     end
 
     function self.press_unequipbutton(button)
-        if self.perk_selected then
-            local perk = self.perk_selected
-            self.selected_char[1]:RemovePerk(perk)
-            self.perk_selected = nil
-            self.perk_button_selected = nil
+        if self.selected_perk then
+            local perk = self.selected_perk
+            self.selected_char:RemovePerk(perk)
+            self.selected_perk = nil
+            self.selected_perk_button = nil
             add_storeperk(perk)
             msg.post("/sound", "play", {id = "click"})
             local perk_removed
             repeat
                 perk_removed = false
-                for i,other_perk in ipairs(array.reverse(self.selected_char[1].perks)) do
-                    if other_perk.CanEquip and not other_perk:CanEquip(self.selected_char[1]) then
-                        self.selected_char[1]:RemovePerk(other_perk)
-                        self.write_log(self.selected_char[1].name .. " removed " .. other_perk.name .. " due to requirements no longer being met")
+                for i,other_perk in ipairs(array.reverse(self.selected_char.perks)) do
+                    if other_perk.CanEquip and not other_perk:CanEquip(self.selected_char) then
+                        self.selected_char:RemovePerk(other_perk)
+                        self.write_log(self.selected_char.name .. " removed " .. other_perk.name .. " due to requirements no longer being met")
                         add_storeperk(other_perk)
                         perk_removed = true
                         break
@@ -427,7 +438,7 @@ function init(self)
 
     self:do_gooey()
 
-    self.set_selected_char({self.char_list[1], self.char_list_gui.items[1].nodes})
+    self.set_selected_char(self.char_list[1], self.char_list_gui.items[1].nodes)
 end
 
 function on_input(self, action_id, action)
