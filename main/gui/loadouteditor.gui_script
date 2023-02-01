@@ -3,6 +3,7 @@ local gui_colors = {
         normal = vmath.vector4(.9, .9, 1, 1),
         hover = vmath.vector4(.80, .80, .95, 1),
         selected = vmath.vector4(.65, .65, .9, 1),
+        disabled = vmath.vector4(.8, .80, .80, 1),
     },
     charlist = {
         normal = vmath.vector4(1, .90, .80, 1),
@@ -37,6 +38,29 @@ function init(self)
         self.logtext = self.logtext .. "\n" .. text
         Engine.richtext_autoscale(self, gui.get_node("log_text"), self.logtext)
     end
+    
+    local function count_skill_slots(char)
+        local skill_slots = {}
+        for i, perk in ipairs(char.perks) do
+            if perk.skill_type then
+                skill_slots[perk.skill_type] = (skill_slots[perk.skill_type] or 0) + 1
+            end
+        end
+        return skill_slots
+    end
+
+    local perk_equippable_funcs = {
+        function(perk) return self.selected_char and table.find_if(self.selected_char.perks, function(char_perk) return perk.id == char_perk.id end) end,
+        function(perk) return self.selected_char and perk.CanEquip and not perk:CanEquip(self.selected_char) end,
+        function(perk) return self.selected_char and perk.skill_type and ((count_skill_slots(self.selected_char)[perk.skill_type] or 0) + 1 > self.selected_char.skill_slots[perk.skill_type]) end,
+        function(perk) return self.selected_char and (self.selected_char:SumLevelsSpent() + (perk.cost or 1) > self.selected_char.level) end,
+    }
+    local perk_equippable_reasons = {
+        "Already equipped!",
+        "Requirements not met!",
+        "All {upper:skill_type} slots full!",
+        "Not enough levels!",
+    }
 
     function self.update_perklist(list)
         for i, item in ipairs(list.items) do
@@ -59,13 +83,14 @@ function init(self)
                 end
             end
         end
-        if list.over_item and list.over_item.data then
+        local hovered_perk = table.sane_get(list, {"over_item", "data"})
+        if hovered_perk then
             local over_button = list.over_item.nodes[hash "perkitem_btn"]
             if self.selected_perk_button ~= over_button then
                 gui.set_color(over_button, gui_colors.perklist.hover)
             end
-            if not (self.selected_perk or self.selected_storeperk) and list.over_item.data then
-                Engine.richtext_autoscale(self, gui.get_node("tooltip_text"), GL.GetDesc(list.over_item.data))
+            if not (self.selected_perk or self.selected_storeperk) and hovered_perk then
+                Engine.richtext_autoscale(self, gui.get_node("tooltip_text"), GL.GetDesc(hovered_perk))
             end
         end
         if list.out_item_now and not (self.selected_perk or self.selected_storeperk) then
@@ -138,17 +163,25 @@ function init(self)
                 if self.selected_storeperk == storeperk then
                     gui.set_color(button, gui_colors.perklist.selected)
                 else
-                    gui.set_color(button, gui_colors.perklist.normal)
+                    local can_equip = true
+                    for i,fn in ipairs(perk_equippable_funcs) do
+                        if fn(storeperk) then
+                            can_equip = false
+                            break
+                        end
+                    end
+                    gui.set_color(button, can_equip and gui_colors.perklist.normal or gui_colors.perklist.disabled)
                 end
             end
         end
-        if list.over_item and list.over_item.data then
+        local hovered_storeperk = table.sane_get(list, {"over_item", "data"})
+        if hovered_storeperk then
             local over_button = list.over_item.nodes[hash "storeperkitem_btn"]
             if self.selected_storeperk_button ~= over_button then
                 gui.set_color(over_button, gui_colors.perklist.hover)
             end
-            if not (self.selected_perk or self.selected_storeperk) and list.over_item.data then
-                Engine.richtext_autoscale(self, gui.get_node("tooltip_text"), GL.GetDesc(list.over_item.data))
+            if not (self.selected_perk or self.selected_storeperk) and hovered_storeperk then
+                Engine.richtext_autoscale(self, gui.get_node("tooltip_text"), GL.GetDesc(hovered_storeperk))
             end
         end
         if list.out_item_now and not (self.selected_perk or self.selected_storeperk) then
@@ -188,16 +221,6 @@ function init(self)
     function self.scrolled_storeperk(scrollbar)
         self.perk_list_gui.scroll_to(scrollbar.scroll.x, scrollbar.scroll.y)
     end
-    
-    local function count_skill_slots (char)
-        local skill_slots = {}
-        for i, perk in ipairs(char.perks) do
-            if perk.skill_type then
-                skill_slots[perk.skill_type] = (skill_slots[perk.skill_type] or 0) + 1
-            end
-        end
-        return skill_slots
-    end
 
     function self.update_charlist(list)
         for i, item in ipairs(list.items) do
@@ -207,8 +230,9 @@ function init(self)
                 gui.set_color(nodes[hash "charitem_btn"], (self.selected_char and self.selected_char == char) and gui_colors.charlist.selected or gui_colors.charlist.normal)
                 Engine.richtext_autoscale(self, nodes[hash "charitem_text"], char.name, 1, 200)
                 gui.set_scale(nodes[hash "charitem_xpbar"], vmath.vector3(char.xp / content.formulas.xpscaling(char.level) / 100, 1, 1))
-                gui.set_color(nodes[hash "charitem_xptext"], vmath.vector3(0, 1, 0.5) * (char.xp / content.formulas.xpscaling(char.level) / 100) + vmath.vector3(0, 0, 0.5))
-                Engine.richtext_autoscale(self, nodes[hash "charitem_xptext"], "XP: " .. char.xp .. "/" .. (content.formulas.xpscaling(char.level) * 100), 0.4, 200)
+                local xpcost = math.round(content.formulas.xpscaling(char.level) * 100)
+                gui.set_color(nodes[hash "charitem_xptext"], vmath.vector3(0, 1, 0.5) * (char.xp / xpcost) + vmath.vector3(0, 0, 0.5))
+                Engine.richtext_autoscale(self, nodes[hash "charitem_xptext"], "XP: " .. char.xp .. "/" .. xpcost, 0.4, 200)
                 gui.set_color(nodes[hash "charitem_lvltext"], (char:SumLevelsSpent() < char.level) and gui_colors.charlist.highlight_lvl or vmath.vector3(0, 0, 0, 1))
                 Engine.richtext_autoscale(self, nodes[hash "charitem_lvltext"], "Level: " .. char:SumLevelsSpent() .. "/" .. char.level, 1, 220)
                 local image = nodes[hash "charitem_image"]
@@ -240,6 +264,7 @@ function init(self)
 
     function self.selected_charlist(list)
         if not list.selected_item.data then return end
+        self.deselect_perk()
         if self.selected_char ~= list.selected_item.data then
             msg.post("/sound", "play", {id = "click"})
             self.set_selected_char(list.selected_item.data, list.selected_item.nodes)
@@ -260,7 +285,7 @@ function init(self)
         Engine.richtext_autoscale(self, gui.get_node("perklist_title"), string.format("%s's perks", char.name), 0.8, 175)
         gui.set_visible(char_gui[hash "charitem_pointer"], true)
         self.perk_list = char.perks
-        self:do_gooey()
+        self:sort_perks()
     end
 
     function self.update_equipbutton(button)
@@ -330,7 +355,8 @@ function init(self)
             self.selected_perk = self.perk_list[#self.perk_list]
             self:do_gooey()
             self.selected_perk_button = self.perk_list_gui.items[#self.perk_list].nodes[hash "perkitem_btn"]
-            self:do_gooey()
+            self:sort_perks()
+            msg.post("/main", "save_game")
         end
     end
 
@@ -353,7 +379,7 @@ function init(self)
             storeperk.amount = storeperk.amount + 1
         else
             perk.amount = 1
-            table.insert(self.storeperk_list, perk)
+            array.insert(self.storeperk_list, perk)
             self.selected_storeperk = self.storeperk_list[#self.storeperk_list]
             self.selected_storeperk_button = self.storeperk_list_gui.items[#self.storeperk_list].nodes[hash "storeperkitem_btn"]
         end
@@ -380,7 +406,8 @@ function init(self)
                     end
                 end
             until not perk_removed
-            self:do_gooey()
+            self:sort_perks()
+            msg.post("/main", "save_game")
         end
     end
 
@@ -397,8 +424,27 @@ function init(self)
         msg.post("/sound", "play", {id = "click"})
         monarch.show("levelselect")
     end
+    
+    function self:sort_perks()
+        array.sort(self.perk_list, function (a, b)
+            return a.id < b.id
+        end)
+        array.sort(self.storeperk_list, function(a, b)
+            for i, sort_key in ipairs(perk_equippable_funcs) do
+                local a_key = sort_key(a) and 1 or 0
+                local b_key = sort_key(b) and 1 or 0
+                if a_key ~= b_key then
+                    return a_key < b_key
+                end
+            end
+            return a.id < b.id
+        end)
+        self:do_gooey()
+        self.selected_perk_button = self.selected_perk_button and self.perk_list_gui.items[table.find(self.perk_list, self.selected_perk)].nodes[hash "perkitem_btn"]
+        self.selected_storeperk_button = self.selected_storeperk_button and self.storeperk_list_gui.items[table.find(self.storeperk_list, self.selected_storeperk)].nodes[hash "storeperkitem_btn"]
+    end
 
-    function self.do_gooey(self, action_id, action)
+    function self:do_gooey(action_id, action)
         self.perk_list_gui = gooey.dynamic_list("perklist_bg", "perklist_stencil", "perkitem_bg", self.perk_list, action_id, action, nil, self.selected_perklist, self.update_perklist)
         self.storeperk_list_gui = gooey.dynamic_list("storeperklist_bg", "storeperklist_stencil", "storeperkitem_bg", self.storeperk_list, action_id, action, nil, self.selected_storeperklist, self.update_storeperklist)
         self.char_list_gui = gooey.dynamic_list("charlist_bg", "charlist_stencil", "charitem_bg", self.char_list, action_id, action, nil, self.selected_charlist, self.update_charlist)

@@ -13,7 +13,7 @@ function Player:AddPerk(perk)
 		perk.user = self
 	end
 	if perk.OnEquip then perk:OnEquip() end
-    table.insert(self.perks, perk)
+    array.insert(self.perks, perk)
 	return perk
 end
 
@@ -63,9 +63,11 @@ local Player_class = {
 				object[stat]:AddMod(Player_data[object].level_mod)
 			end
         elseif k == "xp" then
-			while v >= content.formulas.xpscaling(object.level) * 100 do
-				v = v - content.formulas.xpscaling(object.level) * 100
-				object.level = object.level + 1
+			local xpcost = math.round(content.formulas.xpscaling(object.level) * 100)
+			while v >= xpcost do
+				v = v - xpcost
+                object.level = object.level + 1
+				xpcost = math.round(content.formulas.xpscaling(object.level) * 100)
 			end
 			Player_data[object][k] = v
 		else

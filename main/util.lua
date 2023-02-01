@@ -1,7 +1,11 @@
 if not array then --check if already loaded
 	
     array = {}
-	bool = {}
+    bool = {}
+	
+    array.insert = table.insert
+    array.remove = table.remove
+	array.sort = table.sort
 
 	function table.copy(t, out)
 		out = out or {}
@@ -14,12 +18,12 @@ if not array then --check if already loaded
 	function array.copy(t, out)
 		out = out or {}
 		for i, v in ipairs(t) do
-			table.insert(out, v)
+			array.insert(out, v)
 		end
 		return out
 	end
 	
-	function table.deepcopy(t, out)
+	function table.deepcopy(t, out) --can't handle circular refs, may need a variant with caching or blacklist
 		out = out or {}
         for k, v in pairs(t) do
 			if type(v) == "table" then
@@ -49,7 +53,7 @@ if not array then --check if already loaded
 		return nil
     end
 	
-	function table.match(t, fn)
+	function table.filter(t, fn)
 		local out = {}
 		for k, v in pairs(t) do
 			if fn(v) then
@@ -59,11 +63,11 @@ if not array then --check if already loaded
 		return out
     end
 	
-	function array.match(t, fn)
+	function array.filter(t, fn)
 		local out = {}
 		for i, v in ipairs(t) do
 			if fn(v) then
-				table.insert(out, v)
+				array.insert(out, v)
 			end
 		end
 		return out
@@ -110,7 +114,7 @@ if not array then --check if already loaded
     function table.keys(t)
         local out = {}
 		for k,v in pairs(t) do
-			table.insert(out, k)
+			array.insert(out, k)
         end
 		return out
     end
@@ -160,23 +164,14 @@ if not array then --check if already loaded
 		end
 	end
 
-	function math.round(x)
-		return math.floor(x + 0.5)
-	end
-
-	function math.clamp(x, min, max) --if min > max, return min
-		return math.max(math.min(x, max), min)
-	end
-
 	function bool.xor(a, b)
 		return (not a and not b) or (a and b)
     end
 	
 	function bool.truthy(x)
-        if not x then return false end
-		if type(x) == "string" then
-			return x ~= ""
-        end
+        if not x then return false
+		elseif x == 0 then return false
+		elseif x == "" then return false end
 		if type(x) == "table" then
 			return table.count(x) ~= 0
         end
@@ -185,6 +180,14 @@ if not array then --check if already loaded
 	
 	function string.firstupper(s)
 		return (s:gsub("^%l", string.upper))
+	end
+
+	function math.round(x)
+		return math.floor(x + 0.5)
+	end
+
+	function math.clamp(x, min, max) --if min > max, return min
+		return math.max(math.min(x, max), min)
 	end
 
 end

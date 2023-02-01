@@ -17,13 +17,13 @@ function ModStat:AddMod(new_mod)
 	new_mod.owner = self
 	for i,exist_mod in ipairs(self.mods) do
 		if (new_mod.order or 0) < (exist_mod.order or 0) then
-			table.insert(self.mods, i, new_mod)
+			array.insert(self.mods, i, new_mod)
 			self:StaleValue()
 			return
 		end
 	end
 	--fallthrough to end if no existing mods earlier in order were found
-	table.insert(self.mods, new_mod)
+	array.insert(self.mods, new_mod)
 	self:StaleValue()
 end
 

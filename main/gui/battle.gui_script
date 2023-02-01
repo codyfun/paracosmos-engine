@@ -80,13 +80,14 @@ function init(self)
 				end
 			end
 		end
-		if list.over_item and list.over_item.data then
+		local hovered_skill = table.sane_get(list, {"over_item", "data"})
+		if hovered_skill then
 			local over_button = list.over_item.nodes[hash "skillitem_btn"]
 			if self.selected_skill_button ~= over_button then
 				gui.set_color(over_button, self.get_character_controllable() and gui_colors.skilllist.hover or gui_colors.skilllist.disabled_hover)
 			end
-			if not self.selected_skill and list.over_item.data then
-				Engine.richtext_autoscale(self, gui.get_node("tooltip_text"), GL.GetDesc(list.over_item.data))
+			if not self.selected_skill and hovered_skill then
+				Engine.richtext_autoscale(self, gui.get_node("tooltip_text"), GL.GetDesc(hovered_skill))
 			end
 		end
 		if list.out_item_now and not self.selected_skill then
@@ -245,8 +246,8 @@ function init(self)
 			end
 		end
 		if not self.selected_skill then
-			if list.over_item and list.over_item.data then
-				local skill = list.over_item.data
+			local skill = table.sane_get(list, {"over_item", "data"})
+			if skill then
 				Engine.richtext_autoscale(self, gui.get_node("tooltip_text"), string.gsub(
 					"Lv. {level} {class}\n<color={hpcolor}>HP: {hp}/{hpmax}</color>\n<color=red>Atk: {attack}  </color><color=purple>Mat: {magicattack}  </color><color=brown>Acc: {accuracy}</color>\n<color=teal><color=blue>Def: {defense}  </color>Mdf: {magicdefense}  </color><color=green>Eva: {evasion}</color>{acthint}", "%{(.-)%}", function(s)
 					if s == "acthint" then
@@ -343,8 +344,8 @@ function init(self)
 				end
 			end
 		end
-		if list.over_item and list.over_item.data then
-			local status = list.over_item.data
+		local status = table.sane_get(list, {"over_item", "data"})
+		if status then
 			Engine.richtext_autoscale(self, gui.get_node("tooltip_text"), string.gsub(
 				"{name}\n{desc}", "%{(.-)%}", function(s)
 				return GL.FormatDescField(status, s)
@@ -410,7 +411,7 @@ function init(self)
 					if inventory_at then
                         Game.Inventory[inventory_at].amount = Game.Inventory[inventory_at].amount + drop.amount
                     else
-                        table.insert(Game.Inventory, table.deepcopy(content.perks[drop.id]))
+                        array.insert(Game.Inventory, table.deepcopy(content.perks[drop.id]))
 						Game.Inventory[#Game.Inventory].amount = drop.amount
 					end
                 end
@@ -444,12 +445,12 @@ function init(self)
     end
 	
 	local drop_loot = function(char)
-        self.rewardpool.xp = self.rewardpool.xp + char.reward_xp * content.formulas.xpscaling(char.level)
+		self.rewardpool.xp = self.rewardpool.xp + math.round(char.reward_xp * content.formulas.xpscaling(char.level))
 		local drop_payout = char.reward_xp
 		local drop_roll = Game.RNG.world:random(100)
         while drop_roll < drop_payout do
 			drop_payout = drop_payout - 100
-            local drop_table = array.match(char.perks, function(perk)
+            local drop_table = array.filter(char.perks, function(perk)
                 return (not perk.CanDrop) or (perk:CanDrop())
 			end)
 			if #drop_table > 0 then
@@ -458,7 +459,7 @@ function init(self)
 				if drop_at then
 					self.rewardpool.drops[drop_at].amount = self.rewardpool.drops[drop_at].amount + 1
 				else
-					table.insert(self.rewardpool.drops, table.deepcopy(content.perks[drop.id]))
+					array.insert(self.rewardpool.drops, table.deepcopy(content.perks[drop.id]))
 					self.rewardpool.drops[#self.rewardpool.drops].amount = 1
 				end
 			end
@@ -531,7 +532,7 @@ function init(self)
 
 	self.set_active_character = function(char)
 		self.active_character = char
-		Engine.richtext_autoscale(self, gui.get_node("skilllist_title"), string.format("%s's moves", char.name), 0.8, 175)
+		Engine.richtext_autoscale(self, gui.get_node("skilllist_title"), string.format("%s's skills", char.name), 0.8, 175)
 		self.skill_list = char.skills
 		self:do_gooey()
 	end
@@ -539,9 +540,7 @@ function init(self)
 	self.start_turn = function(enemy_turn)
 		for i, char in ipairs(enemy_turn and self.char1_list or self.char2_list) do
 			for i2, status in ipairs(char.statuses) do
-				if status.OnTurnEnd then
-					status:OnTurnEnd()
-				end
+				table.sane_call(status, "OnTurnEnd")
 			end
 		end
 		if not enemy_turn then
@@ -552,14 +551,10 @@ function init(self)
 		for i, char in ipairs(enemy_turn and self.char2_list or self.char1_list) do
 			char.actions = 1
 			for i2, perk in ipairs(char.perks) do
-				if perk.OnTurnStart then
-					perk:OnTurnStart()
-				end
+				table.sane_call(perk, "OnTurnStart")
 			end
 			for i2, status in ipairs(char.statuses) do
-				if status.OnTurnStart then
-					status:OnTurnStart()
-				end
+				table.sane_call(status, "OnTurnStart")
 			end
 		end
 		if not enemy_turn then
@@ -632,7 +627,7 @@ function init(self)
 	gui.move_above(gui.get_node("tooltip_bg"), gui.get_node("charlist2_bg"))
 
 	for i, player in ipairs(Game.Party) do
-		table.insert(self.char1_list, Battler(player))
+		array.insert(self.char1_list, Battler(player))
     end
 	local disambig = {}
     for i, id in ipairs(Game.Encounter.enemy_ids) do
@@ -643,15 +638,23 @@ function init(self)
 			level = level + 2
 		end
 		local enemy = Battler(id, level)
-        table.insert(self.char2_list, enemy)
+        array.insert(self.char2_list, enemy)
 		if not disambig[enemy.name] then
             disambig[enemy.name] = {enemy}
         else
 			if #disambig[enemy.name] == 1 then
 				disambig[enemy.name][1].name = disambig[enemy.name][1].name .. " " .. 1
             end
-			table.insert(disambig[enemy.name], true) --eh, we're not reading any other values, just add junk
+			array.insert(disambig[enemy.name], true) --eh, we're not reading any other values, just add junk
 			enemy.name = enemy.name .. " " .. #disambig[enemy.name]
+		end
+	end
+	
+	for _, char_list in ipairs {self.char1_list, self.char2_list} do
+		for i, char in ipairs(char_list) do
+			for i2, perk in ipairs(char.perks) do
+				table.sane_call(perk, "OnBattleStart")
+			end
 		end
 	end
 
@@ -686,33 +689,44 @@ function update(self, dt)
 						return
 					end
 					self:do_gooey()
-				end
-				local chosen_move = self.skill_list_gui.items[Game.RNG.battle:random(#self.active_character.skills)]
-				self.selected_skill_button = chosen_move.nodes[hash "skillitem_btn"]
-				self.selected_skill = chosen_move.data
-				local skill_target_list = {}
-				if chosen_move.data.target then
+                end
+				self.skill_list_gui.scroll_to(0, 0) --TODO: May not work with too many skills, test!
+                local valid_moves = table.filter(self.active_character.skills, function(skill) return skill.target and not bool.truthy(skill.cooldown_left) end) --table.filter preserves skipped indices so we can use them on the full list
+                local valid_moves_index = table.keys(valid_moves)
+                while bool.truthy(valid_moves) and not self.selected_skill do
+					local move_index = valid_moves_index[Game.RNG.battle:random(#valid_moves_index)]
+					local chosen_move = self.skill_list_gui.items[move_index]
+					local skill_target_list = {}
 					for _, char_list in ipairs {self.char_list2_gui, self.char_list1_gui} do
 						for i, char in ipairs(char_list.items) do
 							if char.data and chosen_move.data.target(self.active_character, char.data) then
 								self.skill_targets[char.data] = char.nodes
-								table.insert(skill_target_list, char)
+								array.insert(skill_target_list, char)
 							end
 						end
                     end
-					local new_target = skill_target_list[Game.RNG.battle:random(#skill_target_list)]
-                    self.selected_target = new_target.data
-					self.selected_target_gui = new_target.nodes
-					self.highlight_chosen_target(self.selected_target_gui)
+					if bool.truthy(skill_target_list) then
+						self.selected_skill_button = chosen_move.nodes[hash "skillitem_btn"]
+						self.selected_skill = chosen_move.data
+						local new_target = skill_target_list[Game.RNG.battle:random(#skill_target_list)]
+						self.selected_target = new_target.data
+						self.selected_target_gui = new_target.nodes
+						self.highlight_chosen_target(self.selected_target_gui)
+						if chosen_move.data.GetExDesc then
+							local exdesc, replacedesc = chosen_move.data:GetExDesc(self.selected_target)
+							Engine.richtext_autoscale(self, gui.get_node("tooltip_text"), replacedesc and exdesc or (GL.GetDesc(chosen_move.data) .. "\n" .. exdesc))
+						else
+							Engine.richtext_autoscale(self, gui.get_node("tooltip_text"), GL.GetDesc(chosen_move.data))
+						end
+						self:do_gooey()
+                        self.enemy_timer = 0
+                    else
+						table.remove_value(valid_moves_index, move_index)
+					end
+                end
+				if not self.selected_skill then
+					self.active_character.actions = 0
 				end
-				if chosen_move.data.GetExDesc then
-					local exdesc, replacedesc = chosen_move.data:GetExDesc(self.selected_target)
-					Engine.richtext_autoscale(self, gui.get_node("tooltip_text"), replacedesc and exdesc or (GL.GetDesc(chosen_move.data) .. "\n" .. exdesc))
-				else
-					Engine.richtext_autoscale(self, gui.get_node("tooltip_text"), GL.GetDesc(chosen_move.data))
-				end
-				self:do_gooey()
-				self.enemy_timer = 0
 			end
 		end
 	end

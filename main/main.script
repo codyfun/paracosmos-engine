@@ -83,7 +83,7 @@ function Engine.richtext_autoscale (self, node, text, base_scale, base_width)
 		settings.width = gui.get_size(node).x
 	end
 	local output, metrics = richtext.create(text, "main", settings)
-	table.insert(self.rich_text_nodes, {node, output, metrics, settings})
+	array.insert(self.rich_text_nodes, {node, output, metrics, settings})
 	if base_scale then
 		if metrics.width > base_width then
 			gui.set_scale(node, base_width / metrics.width * vmath.vector3(base_scale))
@@ -114,7 +114,6 @@ end
 
 function init(self)
     self.save_dir = sys.get_save_file("Paracosmos", "save")
-    self.save = sys.load(self.save_dir)
 	
     Game.Options = sys.load(sys.get_save_file("Paracosmos", "options"))
 	
@@ -130,6 +129,7 @@ end
 
 function on_message(self, message_id, message, sender)
 	if message_id == hash "main_menu" then
+        self.save = sys.load(self.save_dir)
         monarch.show("mainmenu", {clear = true}, nil, function()
 			if self.save.Party then
 				monarch.post("mainmenu", "can_load")
@@ -140,13 +140,13 @@ function on_message(self, message_id, message, sender)
 		Game.RNG.world:init()
 		Game.Party = {}
 		for i = 1, 3 do
-			table.insert(Game.Party, Player("hero"))
+			array.insert(Game.Party, Player("hero"))
 			Game.Party[i].name = ({"Alex", "Blake", "Cody", "Drew", "Evan"})[i]
 			Game.Party[i].iconcolor = ({vmath.vector4(.0, .6, .6, 1), vmath.vector4(.6, 0, .6, 1), vmath.vector4(.6, .6, 0, 1), vmath.vector4(.4, .8, .4, 1), vmath.vector4(.8, .5, .3, 1)})[i]
 		end
 		Game.Party[1]:AddPerk("skill_heal")
 		Game.Party[2]:AddPerk("skill_buff_attack")
-		Game.Inventory = {}
+        Game.Inventory = {}
 		monarch.show("loadouteditor")
 	elseif message_id == hash "load_game" then
 		Game.RNG.world = require "main/rng"
@@ -160,6 +160,7 @@ function on_message(self, message_id, message, sender)
 			end
             Game.Party[i] = player
 		end
+		Game.Inventory = {}
 		for i, item in ipairs(self.save.Inventory) do
             Game.Inventory[i] = table.deepcopy(content.perks[item.id])
 			Game.Inventory[i].amount = item.amount

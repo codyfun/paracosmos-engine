@@ -4,13 +4,13 @@ function HookFunc:AddHook(new_func, order)
 	for i,exist_func in ipairs(self.funcs) do
 		order = order or (type(new_func) == "table" and new_func.order) or 0
 		if order < self.func_orders[exist_func] then
-			table.insert(self.funcs, i, new_func)
+			array.insert(self.funcs, i, new_func)
 			self.func_orders[new_func] = order
 			return
 		end
 	end
 	--fallthrough to end if no existing funcs earlier in order were found
-	table.insert(self.funcs, new_func)
+	array.insert(self.funcs, new_func)
 	self.func_orders[new_func] = 0
 end
 

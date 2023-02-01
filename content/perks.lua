@@ -24,7 +24,7 @@ local function SimpleSkillPerk(data)
 		end,
         cost = 0,
 		OnEquip = function(self)
-			table.insert(self.user.skill_ids, skill_id)
+			array.insert(self.user.skill_ids, skill_id)
 		end,
 		OnUnequip = function(self)
 			table.remove_value(self.user.skill_ids, skill_id)
@@ -47,9 +47,15 @@ local perks = {
 	skill_buff_attack = SimpleSkillPerk {name = "Flex", icon = "icons/fist",
 		iconcolor = vmath.vector4(0.5, 0.7, 0.3, 1), skill_id = "buff_attack",
 		skill_type = "support",},
-    double_actions = {
-        name = "Veteran Prowess",
-		desc = "Gain an additional action every turn.",
+    stat_actions = {
+        name = "Double Time",
+        desc = "Gain an additional action every turn.",
+        OnBattleStart = function(self)
+            array.insert(self.user.skills, {
+                name = "Double Time",
+				desc = "Gains an additional action every turn."
+			})
+		end,
 		OnTurnStart = function(self)
 			self.user.actions = self.user.actions + 1
 		end,

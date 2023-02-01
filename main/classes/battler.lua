@@ -15,7 +15,7 @@ function Battler:AddStatus(status, data)
 	end
 	status.user = self
 	if status.OnApply then status:OnApply() end
-    table.insert(self.statuses, status)
+    array.insert(self.statuses, status)
 	return status
 end
 
@@ -78,7 +78,7 @@ setmetatable(Battler_class, {
 		object.hp = object.hpmax:GetValue()
         object.skills = {}
 		for i, skill_id in ipairs(object.skill_ids) do
-			table.insert(object.skills, init_skill(object, skill_id))
+			array.insert(object.skills, init_skill(object, skill_id))
 		end
 		object.enemy = enemylevel and true
         if object.enemy then
@@ -91,12 +91,12 @@ setmetatable(Battler_class, {
 				end
                 perk.user = object
 				if perk.OnEquip then perk:OnEquip() end
-                table.insert(object.perks, perk)
+                array.insert(object.perks, perk)
 				sum = sum + (perk.cost or 1)
 			end
 		else
-			table.insert(object.skills, init_skill(object, "defend"))
-			table.insert(object.skills, init_skill(object, "skip_turn"))
+			array.insert(object.skills, init_skill(object, "defend"))
+			array.insert(object.skills, init_skill(object, "skip_turn"))
 		end
 		object.statuses = {}
 		return object
