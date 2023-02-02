@@ -10,7 +10,7 @@ local chars = {
 		magicdefense = 20,
 		accuracy = 20,
 		evasion = 20,
-        skill_ids = {"attack"},
+        skill_ids = {"attack", "defend", "skip_turn"},
 		significant = true,
 	},
 	dog = {

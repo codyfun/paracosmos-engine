@@ -626,8 +626,22 @@ function init(self)
 	gui.set_scale(charlist2_gui[hash "charitem_pointer_tf"], vmath.vector3(-1, 1, 1))
 	gui.move_above(gui.get_node("tooltip_bg"), gui.get_node("charlist2_bg"))
 
-	for i, player in ipairs(Game.Party) do
-		array.insert(self.char1_list, Battler(player))
+    for i, player in ipairs(Game.Party) do
+        local battler = Battler(player)
+        array.sort(battler.skills, function(a, b)
+			local a_usable = bool.truthy(a.target) and 1 or 0
+			local b_usable = bool.truthy(a.target) and 1 or 0
+			if a_usable ~= b_usable then
+				return a_usable < b_usable
+			end
+            local a_cat = a.skill_type or "x"
+            local b_cat = b.skill_type or "x"
+			if a_cat ~= b_cat then
+				return a_cat < b_cat
+			end
+			return a.id < b.id
+		end)
+		array.insert(self.char1_list, battler)
     end
 	local disambig = {}
     for i, id in ipairs(Game.Encounter.enemy_ids) do

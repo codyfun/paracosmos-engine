@@ -1,5 +1,6 @@
 local function SimpleAttackSkill(data)
 	return table.copy(data, {
+		skill_type = "attack",
 		target = GL.target_funcs.target_foe,
 		power_func = function(self, target, variance)
 			return math.round(self.power * self.user.attack:GetValue() / target.defense:GetValue() * (1 - self.variance + 2 * self.variance * variance))
@@ -24,7 +25,7 @@ local skills = {
 		icon = "icons/fist",
 		iconcolor = vmath.vector4(0.5, 0, 0, 1),
 		power = 10,
-		variance = 0.1,
+        variance = 0.1,
 	},
 	defend = {
 		name = "Defend",
@@ -51,6 +52,7 @@ local skills = {
 		name = "Heal",
 		icon = "icons/health-normal",
 		iconcolor = vmath.vector4(0.0, 0.5, 0, 1),
+		skill_type = "support",
 		desc = "Restore an ally's HP.",
 		target = GL.target_funcs.target_ally,
 		power = 1,
@@ -74,6 +76,7 @@ local skills = {
 		name = "Flex",
 		icon = "icons/fist",
 		iconcolor = vmath.vector4(0.5, 0.7, 0.3, 1),
+		skill_type = "support",
 		GetDesc = function(self)
 			return "Boost an ally's attack by " .. self.stacks .. "%."
 		end,

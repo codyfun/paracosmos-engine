@@ -1,7 +1,7 @@
 return function()
 	context("HookFuncs", function()
 		test("HookFunc addition, execution, and removal", function()
-			local HookFunc = require("main.hookfunc")
+			local HookFunc = require("main/hookfunc")
 
 			local tracker = {}
 			
@@ -27,7 +27,7 @@ return function()
 		end)
 		
 		test("HookFunc return value replacement", function()
-			local HookFunc = require("main.hookfunc")
+			local HookFunc = require("main/hookfunc")
 
 			local hook_func = HookFunc(function() return 1,2 end)
 			
@@ -39,7 +39,7 @@ return function()
 		end)
 		
 		test("HookFunc recursive calls return values", function()
-			local HookFunc = require("main.hookfunc")
+			local HookFunc = require("main/hookfunc")
 			
 			local object = {tracker = {}} --can't create a self-referencing hookfunc directly
 			

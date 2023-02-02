@@ -1,17 +1,10 @@
-local init_perk = function(user, perk_id)
-	local perk = table.deepcopy(content.perks[perk_id])
-	perk.user = user
-	return perk
-end
-
 local Player = {}
 
 function Player:AddPerk(perk)
 	if type(perk) == "string" then
-        perk = init_perk(self, perk)
-    else
-		perk.user = self
+		perk = table.deepcopy(content.perks[perk])
 	end
+	perk.user = self
 	if perk.OnEquip then perk:OnEquip() end
     array.insert(self.perks, perk)
 	return perk

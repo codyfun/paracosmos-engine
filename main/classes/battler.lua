@@ -94,9 +94,10 @@ setmetatable(Battler_class, {
                 array.insert(object.perks, perk)
 				sum = sum + (perk.cost or 1)
 			end
-		else
-			array.insert(object.skills, init_skill(object, "defend"))
-			array.insert(object.skills, init_skill(object, "skip_turn"))
+        end
+		for i, perk in ipairs(object.perks) do
+            object.perks[i] = table.copy(perk)
+			object.perks[i].user = object
 		end
 		object.statuses = {}
 		return object
